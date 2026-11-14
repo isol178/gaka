@@ -41,6 +41,16 @@ expect "allow lease push" "$(decision guard-bash.sh "$(bash_cmd 'git push --forc
 expect "allow branch push" "$(decision guard-bash.sh "$(bash_cmd 'git push -u origin chore/dev-environment')")" none
 expect "deny rm -rf /" "$(decision guard-bash.sh "$(bash_cmd 'rm -rf /')")" deny
 expect "allow rm -rf dist" "$(decision guard-bash.sh "$(bash_cmd 'rm -rf dist')")" none
+expect "deny shell write to baselines" "$(decision guard-bash.sh "$(bash_cmd 'echo {} > evals/baselines/live-mvp.json')")" deny
+expect "deny sed -i on baselines" "$(decision guard-bash.sh "$(bash_cmd 'sed -i s/1/2/ evals/baselines/live-mvp.json')")" deny
+expect "allow reading baselines" "$(decision guard-bash.sh "$(bash_cmd 'cat evals/baselines/live-mvp.json')")" none
+expect "allow --update-baseline" "$(decision guard-bash.sh "$(bash_cmd 'pnpm eval:live --update-baseline > /tmp/log')")" none
+expect "deny shell write to .env" "$(decision guard-bash.sh "$(bash_cmd 'echo KEY=1 >> .env')")" deny
+expect "allow reading .env.example" "$(decision guard-bash.sh "$(bash_cmd 'cat .env.example')")" none
+expect "deny cp into baselines" "$(decision guard-bash.sh "$(bash_cmd 'cp /tmp/x.json evals/baselines/live-mvp.json')")" deny
+expect "deny tee .env.local" "$(decision guard-bash.sh "$(bash_cmd 'echo A=1 | tee -a .env.local')")" deny
+expect "allow commit message mentioning baselines" "$(decision guard-bash.sh "$(bash_cmd 'git commit -m "create evals/baselines on clone" 2>&1 | grep x')")" none
+expect "allow redirect elsewhere mentioning .env" "$(decision guard-bash.sh "$(bash_cmd 'grep -r "\.env" docs > /tmp/out.txt')")" none
 expect "allow normal commit" "$(decision guard-bash.sh "$(bash_cmd 'git commit -m "feat: x"')")" none
 
 # format-file: a file outside the repo and a markdown file are ignored (exit 0)

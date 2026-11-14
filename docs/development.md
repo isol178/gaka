@@ -52,9 +52,9 @@ Dependabot が npm・uv・GitHub Actions の更新を週1回まとめて PR に�
 ### 初回にリポジトリ側で設定すること
 
 1. **ブランチ保護**: `main` で、ステータスチェック `TypeScript (lint, types, tests)`、`Python observer (ruff, mypy, pytest)`、`Evals (deterministic + replay)`、`Repo hygiene (workflows, hooks, ADRs, commits)` を必須にする
-2. **ライブ評価**: Settings → Environments で `live-evals` を作り、`ANTHROPIC_API_KEY`（必要なら `OPENAI_API_KEY`）を登録する。必要なら実行前の承認者を設定する
+2. **ライブ評価**: Settings → Environments で `live-evals` を作り、`ANTHROPIC_API_KEY`（必要なら `OPENAI_API_KEY`）を登録する。必要なら実行前の承認者を設定する。週1回の定期実行は、リポジトリ変数 `LIVE_EVALS_SCHEDULED=true` を設定したときだけ動く（1回あたり既定で最大 5 USD）
 3. **Pages（任意）**: Settings → Pages の Source を「GitHub Actions」にし、リポジトリ変数 `PAGES_ENABLED=true` を設定する
-4. **release-please**: Settings → Actions → General で「Allow GitHub Actions to create and approve pull requests」を有効にする
+4. **release-please**: Settings → Actions → General で「Allow GitHub Actions to create and approve pull requests」を有効にする。さらに、contents と pull-requests の書き込み権限を持つ fine-grained PAT（または GitHub App のトークン）を `RELEASE_PLEASE_TOKEN` として登録する。既定の `GITHUB_TOKEN` で作られた PR では他のワークフローが起動しないため、1. の必須チェックが永遠に揃わずリリース PR をマージできない
 
 ## Claude Code
 

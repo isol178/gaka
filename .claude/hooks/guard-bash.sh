@@ -19,6 +19,21 @@ if grep -Eq 'git[[:space:]]+push[^|;&]*[[:space:]](origin[[:space:]]+)?(main|mas
   pre_tool_decision deny "Do not push to main directly; open a pull request."
   exit 0
 fi
+# Shell writes to protected paths (the Edit/Write variant is handled by protect-paths.sh).
+# The write operator must target the path directly, so mentioning a path in a commit message or
+# redirecting stderr elsewhere does not trip it. A guard rail, not a sandbox.
+writes_to() { # $1 = path regex
+  local verb='(^|[[:space:];&|(])'
+  grep -Eq "(>>?[[:space:]]*|${verb}tee[[:space:]]+(-a[[:space:]]+)?|${verb}(sed|perl)[[:space:]]+-[a-zA-Z]*i[^|;&]*|${verb}(cp|mv|rm|truncate)[[:space:]][^|;&]*)[^[:space:]|;&<>]*$1" <<<"$cmd"
+}
+if writes_to 'evals/baselines' && ! grep -Eq -- '--update-baseline' <<<"$cmd"; then
+  pre_tool_decision deny "Eval baselines are only written by \`pnpm eval:live --update-baseline\` after a human accepts the run."
+  exit 0
+fi
+if writes_to '\.env(\.local|\.[a-z]+\.local)?([[:space:]]|$)'; then
+  pre_tool_decision deny "Secrets files are off limits. Ask the user to edit .env."
+  exit 0
+fi
 # shellcheck disable=SC2016 # literal \$HOME in the pattern is intended
 if grep -Eq 'rm[[:space:]]+-[a-zA-Z]*r[a-zA-Z]*f?[[:space:]]+(/|~|\$HOME|\.|\*)([[:space:]]|$)' <<<"$cmd"; then
   pre_tool_decision deny "Refusing a recursive delete of a root, home or whole working directory."

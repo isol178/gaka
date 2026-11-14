@@ -50,7 +50,7 @@ Chosen option: "3層構成", because ハーネスの退行はモデル抜きで�
 
 - `ci.yml` の `evals` ジョブが `pnpm eval:offline` を実行し、失敗で PR を止める
 - `evals-live.yml` は `pull_request` では起動しない（`workflow_dispatch` と `schedule` のみ）
-- Claude Code の PreToolUse フックで、`evals/baselines/**` の手作業の編集を拒否し、既存の `evals/cassettes/**` の変更には人の確認を求める。ベースラインは `pnpm eval:live --update-baseline` でのみ更新する
+- Claude Code の PreToolUse フックで、`evals/baselines/**` への Edit/Write と代表的なシェル経由の書き込み（リダイレクト、`sed -i`、`cp` など）を拒否し、既存の `evals/cassettes/**` の Edit/Write には人の確認を求める。フックは歯止めであって完全な防壁ではないため、ベースラインの変更は PR のレビューでも確認する。ベースラインは `pnpm eval:live --update-baseline` でのみ更新する
 
 ## Pros and Cons of the Options
 

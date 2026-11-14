@@ -22,6 +22,8 @@ concurrency:
 
 jobs:
   live:
+    # Scheduled runs spend money unattended: opt in with repository variable LIVE_EVALS_SCHEDULED=true.
+    if: github.event_name != 'schedule' || vars.LIVE_EVALS_SCHEDULED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 120
     # Create the `live-evals` environment to hold API keys and, optionally, require approval.
