@@ -1,0 +1,10 @@
+{
+  "$schema": "../../packages/harness/schema/capability-profile.schema.json",
+  "id": "scripted-blind",
+  "adapter": "scripted",
+  "model": "scripted",
+  "vision": false,
+  "imageTokensPerMegapixel": 0,
+  "contextTokens": 32768,
+  "pricing": { "inputPerMTok": 0, "outputPerMTok": 0 }
+}

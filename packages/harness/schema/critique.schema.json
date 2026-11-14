@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Critique",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["score", "done", "fixes"],
+  "properties": {
+    "score": { "type": "number", "minimum": 0, "maximum": 10 },
+    "done": { "type": "boolean" },
+    "fixes": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["layer", "instruction"],
+        "properties": {
+          "layer": { "type": "string" },
+          "instruction": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "focus": {
+      "description": "Optional region (0..1 ratios) the critic wants to see at high resolution next time.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "w", "h"],
+      "properties": {
+        "x": { "type": "number", "minimum": 0, "maximum": 1 },
+        "y": { "type": "number", "minimum": 0, "maximum": 1 },
+        "w": { "type": "number", "minimum": 0, "maximum": 1 },
+        "h": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    }
+  }
+}

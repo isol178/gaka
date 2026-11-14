@@ -1,0 +1,40 @@
+{
+  "description": "Landscape brief. Painter first returns malformed JSON (exercises the retry path), then a full painting, then one layer replacement. Critic asks for one fix and then approves.",
+  "painter": [
+    {
+      "text": "Sure! Here is the painting: {\"version\": \"0.1\", \"canvas\": ",
+      "usage": {
+        "inputTokens": 3000,
+        "outputTokens": 20
+      }
+    },
+    {
+      "text": "```json\n{\"version\": \"0.1\", \"canvas\": {\"width\": 256, \"height\": 192, \"seed\": 42}, \"regions\": {\"sky\": {\"x\": 0, \"y\": 0, \"w\": 1, \"h\": 0.55}, \"mountain\": {\"x\": 0, \"y\": 0.35, \"w\": 1, \"h\": 0.3}, \"water\": {\"x\": 0, \"y\": 0.62, \"w\": 1, \"h\": 0.38}}, \"layers\": [{\"id\": \"background\", \"ops\": [{\"op\": \"fill\", \"color\": \"#9db7d5\", \"colorTo\": \"#f2d8b8\"}, {\"op\": \"stroke\", \"region\": \"sky\", \"dir\": \"horizontal\", \"length\": \"short\", \"density\": \"high\", \"palette\": [\"#9db7d5\", \"#c9d8e8\"], \"jitter\": 0.15, \"opacity\": 0.4}, {\"op\": \"glaze\", \"region\": \"sky\", \"color\": \"#f2c48d\", \"opacity\": 0.1}]}, {\"id\": \"midground\", \"ops\": [{\"op\": \"stroke\", \"region\": \"mountain\", \"dir\": \"diagonal\", \"length\": \"medium\", \"width\": \"broad\", \"density\": \"medium\", \"palette\": [\"#5b6f8a\", \"#46566d\"], \"opacity\": 0.7}]}, {\"id\": \"subject\", \"ops\": [{\"op\": \"fill\", \"region\": \"water\", \"color\": \"#6f8fb0\", \"colorTo\": \"#3e5674\", \"opacity\": 0.9}, {\"op\": \"stroke\", \"region\": \"water\", \"dir\": \"horizontal\", \"length\": \"long\", \"width\": \"fine\", \"palette\": [\"#d8e4ef\", \"#8fb0cf\"], \"opacity\": 0.5}, {\"op\": \"noise\", \"strength\": 0.04}]}]}\n```",
+      "usage": {
+        "inputTokens": 3100,
+        "outputTokens": 700
+      }
+    },
+    {
+      "text": "{\"layer\": {\"id\": \"midground\", \"ops\": [{\"op\": \"stroke\", \"region\": \"mountain\", \"dir\": \"diagonal\", \"length\": \"long\", \"width\": \"broad\", \"density\": \"high\", \"palette\": [\"#4a5a72\", \"#6b7d96\", \"#2f3b4d\"], \"opacity\": 0.8}, {\"op\": \"glaze\", \"region\": \"mountain\", \"color\": \"#f2c48d\", \"opacity\": 0.08}]}}",
+      "usage": {
+        "inputTokens": 3500,
+        "outputTokens": 200
+      }
+    }
+  ],
+  "critic": [
+    {
+      "text": "{\"score\": 5, \"done\": false, \"fixes\": [{\"layer\": \"midground\", \"instruction\": \"Mountains read as flat haze; add darker, longer diagonal strokes and warm rim light.\"}], \"focus\": {\"x\": 0, \"y\": 0.35, \"w\": 1, \"h\": 0.3}}",
+      "usage": {
+        "outputTokens": 60
+      }
+    },
+    {
+      "text": "{\"score\": 7.5, \"done\": true, \"fixes\": []}",
+      "usage": {
+        "outputTokens": 20
+      }
+    }
+  ]
+}
