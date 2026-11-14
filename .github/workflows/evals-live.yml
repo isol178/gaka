@@ -1,0 +1,50 @@
+name: Live evals
+
+# Real models, real cost. Never triggered by pull_request, so fork PRs cannot reach secrets.
+on:
+  workflow_dispatch:
+    inputs:
+      max_cost_usd:
+        description: Stop starting new runs once this much has been spent (USD)
+        default: "5"
+      case:
+        description: Only run this case id (optional)
+        default: ""
+  schedule:
+    - cron: "0 18 * * 0" # Mondays 03:00 JST
+
+permissions:
+  contents: read
+
+concurrency:
+  group: evals-live
+  cancel-in-progress: false
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    # Create the `live-evals` environment to hold API keys and, optionally, require approval.
+    environment: live-evals
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - name: Run live evals
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MAX_COST: ${{ inputs.max_cost_usd || '5' }}
+          CASE: ${{ inputs.case }}
+        run: |
+          args=(--max-cost-usd "$MAX_COST" --out evals/results/live)
+          if [ -n "$CASE" ]; then args+=(--case "$CASE"); fi
+          pnpm eval:live "${args[@]}"
+      - name: Job summary
+        if: always()
+        run: cat evals/results/live/report.md >> "$GITHUB_STEP_SUMMARY" || true
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: evals-live-${{ github.run_id }}
+          path: evals/results/live/
+          retention-days: 90

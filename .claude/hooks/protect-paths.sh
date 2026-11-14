@@ -2,6 +2,7 @@
 # PreToolUse(Edit|Write|NotebookEdit): keep generated files, lockfiles, secrets and eval
 # expectations out of hand edits. Eval baselines in particular must never be edited to make a
 # regression "pass"; they are rewritten only by `pnpm eval:live --update-baseline`.
+# shellcheck source=lib.sh
 source "$(dirname "$0")/lib.sh"
 
 input=$(cat)

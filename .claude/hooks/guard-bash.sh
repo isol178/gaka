@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # PreToolUse(Bash): block commands that bypass the repo's safety nets.
+# shellcheck source=lib.sh
 source "$(dirname "$0")/lib.sh"
 
 cmd=$(jq -r '.tool_input.command // empty')
@@ -18,6 +19,7 @@ if grep -Eq 'git[[:space:]]+push[^|;&]*[[:space:]](origin[[:space:]]+)?(main|mas
   pre_tool_decision deny "Do not push to main directly; open a pull request."
   exit 0
 fi
+# shellcheck disable=SC2016 # literal \$HOME in the pattern is intended
 if grep -Eq 'rm[[:space:]]+-[a-zA-Z]*r[a-zA-Z]*f?[[:space:]]+(/|~|\$HOME|\.|\*)([[:space:]]|$)' <<<"$cmd"; then
   pre_tool_decision deny "Refusing a recursive delete of a root, home or whole working directory."
   exit 0

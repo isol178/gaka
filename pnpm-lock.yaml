@@ -17,6 +17,12 @@ importers:
       '@commitlint/config-conventional':
         specifier: ^21.2.4
         version: 21.2.4
+      '@gaka/dsl':
+        specifier: workspace:*
+        version: link:packages/dsl
+      '@gaka/renderer':
+        specifier: workspace:*
+        version: link:packages/renderer
       '@types/node':
         specifier: ^26.6.6
         version: 26.6.6

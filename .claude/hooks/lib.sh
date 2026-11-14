@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Shared helpers for Claude Code hooks. Hooks receive the event as JSON on stdin.
 set -euo pipefail
 
