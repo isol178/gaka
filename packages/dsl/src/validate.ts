@@ -49,14 +49,28 @@ export function validatePainting(value: unknown): ValidationResult {
 }
 
 /**
+ * Body of the first ``` fenced block, or undefined. Uses indexOf instead of a regex: model output
+ * is untrusted, and the natural regex backtracks polynomially on crafted input (ReDoS).
+ */
+function fencedBody(text: string): string | undefined {
+  const open = text.indexOf("```");
+  if (open < 0) return undefined;
+  const bodyStart = text.indexOf("\n", open + 3);
+  if (bodyStart < 0) return undefined;
+  const info = text.slice(open + 3, bodyStart).trim();
+  if (info !== "" && info !== "json") return undefined;
+  const close = text.indexOf("\n```", bodyStart);
+  return close < 0 ? undefined : text.slice(bodyStart + 1, close);
+}
+
+/**
  * Extracts a JSON value from raw model output. Accepts bare JSON or a single fenced block,
  * because the harness only assumes "the model returns text containing JSON".
  */
 export function extractJson(
   text: string,
 ): { ok: true; value: unknown } | { ok: false; error: string } {
-  const fenced = /```(?:json)?\s*\n([\s\S]*?)\n```/.exec(text);
-  const candidate = (fenced?.[1] ?? text).trim();
+  const candidate = (fencedBody(text) ?? text).trim();
   try {
     return { ok: true, value: JSON.parse(candidate) };
   } catch (e) {

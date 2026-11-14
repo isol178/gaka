@@ -41,6 +41,17 @@ describe("parsePainting", () => {
     expect(parsePainting(`Here you go:\n\`\`\`json\n${minimal}\n\`\`\``).ok).toBe(true);
   });
 
+  it("accepts a bare fence without a language tag", () => {
+    expect(parsePainting(`\`\`\`\n${minimal}\n\`\`\``).ok).toBe(true);
+  });
+
+  it("stays linear on adversarial fenced input (CodeQL js/polynomial-redos)", () => {
+    const evil = `\`\`\`\n${"\n ".repeat(200_000)}`;
+    const started = performance.now();
+    expect(parsePainting(evil).ok).toBe(false);
+    expect(performance.now() - started).toBeLessThan(500);
+  });
+
   it("reports malformed JSON instead of throwing", () => {
     const r = parsePainting("{ not json");
     expect(r).toMatchObject({ ok: false, errors: [expect.stringMatching(/^invalid JSON/)] });

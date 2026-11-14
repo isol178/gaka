@@ -30,8 +30,17 @@ export async function judge(
     prompt: `Brief: ${brief}`,
     images: [{ label: "final", png }],
   });
-  const match = /\{[\s\S]*\}/.exec(res.text);
-  const parsed = match ? (JSON.parse(match[0]) as Partial<JudgeScore>) : {};
+  // Take the outermost {...} so prose around the JSON is tolerated (indexOf, not a regex: untrusted input).
+  const start = res.text.indexOf("{");
+  const end = res.text.lastIndexOf("}");
+  let parsed: Partial<JudgeScore> = {};
+  if (start >= 0 && end > start) {
+    try {
+      parsed = JSON.parse(res.text.slice(start, end + 1)) as Partial<JudgeScore>;
+    } catch {
+      parsed = {};
+    }
+  }
   if (typeof parsed.score !== "number")
     throw new Error(`judge returned no score: ${res.text.slice(0, 200)}`);
   return { score: parsed as JudgeScore, usage: res.usage };
