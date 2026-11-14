@@ -25,6 +25,8 @@ export interface Usage {
 export interface ModelResponse {
   text: string;
   usage: Usage;
+  /** Normalized reason the model stopped. "max_tokens" means the reply was cut off. */
+  stopReason?: "end" | "max_tokens" | "refusal" | "other";
 }
 
 export interface ModelAdapter {

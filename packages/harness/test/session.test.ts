@@ -112,3 +112,36 @@ describe("replaceLayer", () => {
     expect(replaceLayer(p, { id: "b", ops: [] }).layers.map((l) => l.id)).toEqual(["a", "b"]);
   });
 });
+
+describe("runSession stop reasons", () => {
+  it("re-asks with a truncation hint when a reply hits the output limit", async () => {
+    const c = cassette("landscape-retry");
+    const painter = new ScriptedAdapter(profile("scripted"), c.painter.slice(1));
+    const truncating = {
+      profile: painter.profile,
+      calls: 0,
+      async complete(req: Parameters<ScriptedAdapter["complete"]>[0]) {
+        this.calls++;
+        if (this.calls === 1)
+          return {
+            text: "{",
+            usage: { inputTokens: 1, outputTokens: 1, imageTokens: 0 },
+            stopReason: "max_tokens" as const,
+          };
+        return painter.complete(req);
+      },
+    };
+    const record = await runSession({
+      brief: "x",
+      canvas: CANVAS,
+      painter: truncating,
+      critic: new ScriptedAdapter(profile("scripted"), c.critic),
+      maxIterations: 1,
+      maxRetries: 1,
+      observation: "B",
+      imageTokenBudget: 0,
+    });
+    expect(record.iterations[0]?.rejected[0]?.[0]).toMatch(/cut off/);
+    expect(painter.requests[0]?.prompt).toContain("cut off");
+  });
+});

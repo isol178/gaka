@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { REPO_ROOT } from "@gaka/harness";
 import type { Summary } from "./report.ts";
@@ -45,6 +45,7 @@ export function compareToBaseline(suiteId: string, summary: Summary): string[] {
 }
 
 export function writeBaseline(suiteId: string, summary: Summary): void {
+  mkdirSync(BASELINE_DIR, { recursive: true });
   const cells = Object.fromEntries(
     Object.entries(summary.cells).filter(([k]) => k.startsWith(`${suiteId}/`)),
   );

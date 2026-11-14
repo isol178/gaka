@@ -75,6 +75,29 @@ describe("OpenAICompatibleAdapter", () => {
     const [url, init] = fetch.mock.calls[0] ?? [];
     expect(url).toBe("http://localhost:11434/v1/chat/completions");
     expect(new Headers(init?.headers).has("authorization")).toBe(false);
-    expect(res).toEqual({ text: "{}", usage: { inputTokens: 5, outputTokens: 1, imageTokens: 0 } });
+    expect(res).toEqual({
+      text: "{}",
+      stopReason: "end",
+      usage: { inputTokens: 5, outputTokens: 1, imageTokens: 0 },
+    });
+  });
+});
+
+describe("stop reasons", () => {
+  it("normalizes Anthropic max_tokens and OpenAI length to max_tokens", async () => {
+    mockFetch({ stop_reason: "max_tokens", content: [{ type: "text", text: "{" }] });
+    const a = await new AnthropicAdapter(profile("claude-opus-5-5"), {
+      ANTHROPIC_API_KEY: "k",
+    }).complete({
+      system: "",
+      prompt: "",
+    });
+    expect(a.stopReason).toBe("max_tokens");
+    mockFetch({ choices: [{ message: { content: "{" }, finish_reason: "length" }] });
+    const o = await new OpenAICompatibleAdapter(profile("local-ollama"), {}).complete({
+      system: "",
+      prompt: "",
+    });
+    expect(o.stopReason).toBe("max_tokens");
   });
 });

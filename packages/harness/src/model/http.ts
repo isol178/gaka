@@ -62,11 +62,14 @@ export class OpenAICompatibleAdapter implements ModelAdapter {
       key ? { authorization: `Bearer ${key}` } : {},
       body,
     )) as {
-      choices: { message: { content: string | null } }[];
+      choices: { message: { content: string | null }; finish_reason?: string }[];
       usage?: { prompt_tokens?: number; completion_tokens?: number };
     };
+    const finish = json.choices[0]?.finish_reason;
     return {
       text: json.choices[0]?.message.content ?? "",
+      stopReason:
+        finish === "length" ? "max_tokens" : finish === "content_filter" ? "refusal" : "end",
       usage: {
         inputTokens: json.usage?.prompt_tokens ?? 0,
         outputTokens: json.usage?.completion_tokens ?? 0,
@@ -98,15 +101,25 @@ export class AnthropicAdapter implements ModelAdapter {
       { "x-api-key": key, "anthropic-version": "2023-06-01" },
       {
         model: this.profile.model,
-        max_tokens: req.maxOutputTokens ?? 8192,
+        max_tokens: req.maxOutputTokens ?? 16_000,
         system: req.system,
         messages: [{ role: "user", content }],
       },
     )) as {
+      stop_reason?: string;
       content: { type: string; text?: string }[];
       usage?: { input_tokens?: number; output_tokens?: number };
     };
+    const stop = json.stop_reason;
     return {
+      stopReason:
+        stop === "max_tokens"
+          ? "max_tokens"
+          : stop === "refusal"
+            ? "refusal"
+            : stop === "end_turn"
+              ? "end"
+              : "other",
       text: json.content
         .filter((c) => c.type === "text")
         .map((c) => c.text ?? "")

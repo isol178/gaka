@@ -75,7 +75,17 @@ async function callWithRetry<T>(
   for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
     const res = await model.complete({ ...req, prompt });
     onUsage(res.usage);
-    const parsed = parse(res.text);
+    if (res.stopReason === "refusal")
+      throw new Error(`model '${model.profile.id}' refused the request`);
+    const parsed: Parsed<T> =
+      res.stopReason === "max_tokens"
+        ? {
+            ok: false,
+            errors: [
+              "(root): reply was cut off at the output token limit; reply with more compact JSON",
+            ],
+          }
+        : parse(res.text);
     if (parsed.ok) return { value: parsed.value, attempts: attempt, rejected };
     rejected.push(parsed.errors);
     prompt = retryPrompt(req.prompt, parsed.errors);
