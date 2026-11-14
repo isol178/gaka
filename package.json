@@ -19,7 +19,7 @@
     "py:lint": "cd observer && uv run ruff check . && uv run ruff format --check .",
     "py:typecheck": "cd observer && uv run mypy",
     "py:test": "cd observer && uv run pytest",
-    "adr:check": "python3 .claude/skills/adr/scripts/validate_adr.py docs/decisions",
+    "adr:check": "uv run --quiet --no-project --with pyyaml python .claude/skills/adr/scripts/validate_adr.py --strict docs/decisions",
     "hooks:test": "bash .claude/hooks/test/run.sh",
     "check:fast": "pnpm lint && pnpm typecheck && pnpm py:lint",
     "check": "pnpm gen:check && pnpm lint && pnpm typecheck && pnpm test && pnpm py:lint && pnpm py:typecheck && pnpm py:test && pnpm adr:check && pnpm hooks:test",
@@ -28,7 +28,8 @@
     "eval:live": "tsx packages/evals/src/cli.ts run --tier live",
     "gaka": "tsx packages/harness/src/cli.ts",
     "site:build": "tsx scripts/build-site.ts",
-    "py:format": "cd observer && uv run ruff format . && uv run ruff check --fix ."
+    "py:format": "cd observer && uv run ruff format . && uv run ruff check --fix .",
+    "adr:new": "uv run --quiet --no-project --with pyyaml python .claude/skills/adr/scripts/new_adr.py"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.7",
