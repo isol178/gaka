@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(pnpm check)",
+      "Bash(pnpm check:fast)",
+      "Bash(pnpm lint)",
+      "Bash(pnpm lint:fix)",
+      "Bash(pnpm typecheck)",
+      "Bash(pnpm test)",
+      "Bash(pnpm test *)",
+      "Bash(pnpm test:coverage)",
+      "Bash(pnpm gen)",
+      "Bash(pnpm gen:check)",
+      "Bash(pnpm py:lint)",
+      "Bash(pnpm py:format)",
+      "Bash(pnpm py:typecheck)",
+      "Bash(pnpm py:test)",
+      "Bash(pnpm adr:check)",
+      "Bash(pnpm hooks:test)",
+      "Bash(pnpm eval:offline)",
+      "Bash(pnpm eval:offline *)",
+      "Bash(pnpm exec vitest *)",
+      "Bash(pnpm exec biome check *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)"
+    ],
+    "ask": [
+      "Bash(pnpm eval:live *)",
+      "Bash(pnpm eval:live)",
+      "Bash(pnpm eval run *)",
+      "Bash(pnpm gaka *)",
+      "Bash(git push *)"
+    ],
+    "deny": ["Read(./.env)", "Read(./.env.local)", "Read(./.env.*.local)"]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-start.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect-paths.sh",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-bash.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/format-file.sh",
+            "timeout": 60,
+            "statusMessage": "Formatting"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/stop-verify.sh",
+            "timeout": 240,
+            "statusMessage": "Running checks and tests"
+          }
+        ]
+      }
+    ]
+  }
+}
