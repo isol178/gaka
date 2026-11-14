@@ -16,7 +16,7 @@ LLM が「描く → 見る → 直す」を繰り返して絵を仕上げるた
 
 ## コマンド
 
-- 初回: `pnpm setup`（pnpm install、uv sync、git フック導入）
+- 初回: `pnpm bootstrap`（pnpm install、uv sync、git フック導入）
 - 全検査: `pnpm check`（CI と同じ内容）。速い検査: `pnpm check:fast`
 - テスト: `pnpm test`（TS）、`pnpm py:test`（Python）
 - DSL のスキーマを変えたら `pnpm gen` で型を再生成する
