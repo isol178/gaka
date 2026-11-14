@@ -38,7 +38,7 @@ Chosen option: "TypeScript（ハーネス・レンダラー）＋ Python（観�
 - Node 側の描画は `@napi-rs/canvas`（Skia、ビルド済みバイナリで追加のシステム依存なし）。ブラウザでは同じ `render()` を Canvas 2D に適用する
 - 観察は `observer/`（uv 管理の Python パッケージ）。CLI が JSON を標準出力に返し、ハーネスはサブプロセスで呼ぶ
 - DSL の正典は `packages/dsl/schema/gaka-dsl.schema.json`。TS の型はそこから生成し、CI で生成物の鮮度を検査する
-- モデル接続は SDK を使わず HTTP で実装する（OpenAI 互換と Anthropic Messages）。全アダプターを「テキスト（＋画像）→ テキスト」の同じ形に揃えるため
+- モデル接続は SDK を使わず HTTP で実装する（OpenAI 互換と Anthropic Messages）。全アダプターを「テキスト（＋画像）→ テキスト」の同じ形に揃えるため（**ADR 0003 で改訂**: SDK のある主要プロバイダーは公式 SDK を使い、HTTP は SDK のない接続先に限る）
 
 ### Consequences
 

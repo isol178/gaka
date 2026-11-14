@@ -37,7 +37,8 @@ export interface ModelAdapter {
 /** Capability profile (concept section 7.2), loaded from config/models/*.json. */
 export interface CapabilityProfile {
   id: string;
-  adapter: "scripted" | "openai-compatible" | "anthropic";
+  /** SDK adapters for providers that ship one; "openai-compatible" is plain HTTP for those that do not. */
+  adapter: "scripted" | "anthropic" | "openai" | "openai-compatible";
   model: string;
   baseUrl?: string;
   apiKeyEnv?: string;

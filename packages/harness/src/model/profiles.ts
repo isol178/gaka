@@ -2,7 +2,8 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import schema from "../../schema/capability-profile.schema.json" with { type: "json" };
-import { AnthropicAdapter, OpenAICompatibleAdapter } from "./http.ts";
+import { OpenAICompatibleAdapter } from "./http.ts";
+import { AnthropicAdapter, OpenAIAdapter } from "./sdk.ts";
 import type { CapabilityProfile, ModelAdapter } from "./types.ts";
 
 const validate = new Ajv2020({ allErrors: true }).compile<CapabilityProfile>(schema);
@@ -30,7 +31,9 @@ export function createAdapter(profile: CapabilityProfile, env = process.env): Mo
     case "openai-compatible":
       return new OpenAICompatibleAdapter(profile, env);
     case "anthropic":
-      return new AnthropicAdapter(profile, env);
+      return new AnthropicAdapter(profile, { env });
+    case "openai":
+      return new OpenAIAdapter(profile, { env });
     case "scripted":
       throw new Error("scripted profiles need a cassette; construct ScriptedAdapter directly");
   }

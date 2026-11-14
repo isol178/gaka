@@ -32,7 +32,10 @@ function imageTokens(profile: CapabilityProfile, req: ModelRequest): number {
   return (req.images ?? []).reduce((n, im) => n + estimateImageTokens(profile, im.png), 0);
 }
 
-/** Any server speaking the OpenAI chat-completions dialect: hosted APIs, Ollama, vLLM, llama.cpp. */
+/**
+ * Plain-HTTP adapter for OpenAI-compatible servers that have no SDK of their own (Ollama, vLLM,
+ * llama.cpp server, ...). Providers with an official SDK use the adapters in sdk.ts.
+ */
 export class OpenAICompatibleAdapter implements ModelAdapter {
   constructor(
     readonly profile: CapabilityProfile,
@@ -73,60 +76,6 @@ export class OpenAICompatibleAdapter implements ModelAdapter {
       usage: {
         inputTokens: json.usage?.prompt_tokens ?? 0,
         outputTokens: json.usage?.completion_tokens ?? 0,
-        imageTokens: imageTokens(this.profile, req),
-      },
-    };
-  }
-}
-
-/** Anthropic Messages API over plain HTTP (no SDK, to keep the adapter layer uniform). */
-export class AnthropicAdapter implements ModelAdapter {
-  constructor(
-    readonly profile: CapabilityProfile,
-    private readonly env: NodeJS.ProcessEnv = process.env,
-  ) {}
-
-  async complete(req: ModelRequest): Promise<ModelResponse> {
-    const key = apiKey(this.profile, this.env) ?? "";
-    const content = [
-      ...(req.images ?? []).map((img) => ({
-        type: "image",
-        source: { type: "base64", media_type: "image/png", data: img.png.toString("base64") },
-      })),
-      { type: "text", text: req.prompt },
-    ];
-    const base = this.profile.baseUrl ?? "https://api.anthropic.com";
-    const json = (await postJson(
-      `${base.replace(/\/$/, "")}/v1/messages`,
-      { "x-api-key": key, "anthropic-version": "2023-06-01" },
-      {
-        model: this.profile.model,
-        max_tokens: req.maxOutputTokens ?? 16_000,
-        system: req.system,
-        messages: [{ role: "user", content }],
-      },
-    )) as {
-      stop_reason?: string;
-      content: { type: string; text?: string }[];
-      usage?: { input_tokens?: number; output_tokens?: number };
-    };
-    const stop = json.stop_reason;
-    return {
-      stopReason:
-        stop === "max_tokens"
-          ? "max_tokens"
-          : stop === "refusal"
-            ? "refusal"
-            : stop === "end_turn"
-              ? "end"
-              : "other",
-      text: json.content
-        .filter((c) => c.type === "text")
-        .map((c) => c.text ?? "")
-        .join(""),
-      usage: {
-        inputTokens: json.usage?.input_tokens ?? 0,
-        outputTokens: json.usage?.output_tokens ?? 0,
         imageTokens: imageTokens(this.profile, req),
       },
     };

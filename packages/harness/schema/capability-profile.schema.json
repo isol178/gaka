@@ -15,7 +15,7 @@
   "properties": {
     "$schema": { "type": "string" },
     "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
-    "adapter": { "enum": ["scripted", "openai-compatible", "anthropic"] },
+    "adapter": { "enum": ["scripted", "anthropic", "openai", "openai-compatible"] },
     "model": { "type": "string", "minLength": 1 },
     "baseUrl": { "type": "string" },
     "apiKeyEnv": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },

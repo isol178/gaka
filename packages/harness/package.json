@@ -7,8 +7,10 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
     "@gaka/dsl": "workspace:*",
     "@gaka/renderer": "workspace:*",
-    "ajv": "^8.20.0"
+    "ajv": "^8.20.0",
+    "openai": "^7.57.0"
   }
 }

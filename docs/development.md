@@ -65,7 +65,9 @@ Dependabot が npm・uv・GitHub Actions の更新を週1回まとめて PR に�
 ## 新しいモデルを追加する
 
 1. `config/models/<id>.json` に能力プロファイルを書く（スキーマは `packages/harness/schema/capability-profile.schema.json`）
-   - OpenAI 互換のサーバー（Ollama、vLLM、llama.cpp など）は `adapter: "openai-compatible"` と `baseUrl` で足せる
+   - `adapter` は、Anthropic なら `anthropic`、OpenAI なら `openai`（どちらも公式 SDK）。自前の SDK を持たない OpenAI 互換サーバー（Ollama、vLLM、llama.cpp など）は `openai-compatible` と `baseUrl`（HTTP で接続）
+   - 公式 SDK のある別のプロバイダーを足すときは、`packages/harness/src/model/sdk.ts` にアダプターを足し、スキーマの `adapter` に値を追加する（ADR 0003）
+   - `pricing` は提供元の料金表の値を書く（費用の集計と、ライブ評価の費用ガードに使う）
    - 画像を読めないモデルは `vision: false`。Critic に使うと数値だけの観察に切り替わる
 2. `pnpm test` でプロファイルの検証が通ることを確かめる
 3. `evals/suites/live-mvp.json` の `pairs` に足す
