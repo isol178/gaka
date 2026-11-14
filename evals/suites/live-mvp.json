@@ -1,0 +1,35 @@
+{
+  "$schema": "../schema/suite.schema.json",
+  "id": "live-mvp",
+  "tier": "live",
+  "description": "MVP comparison from the concept (section 13): landscape briefs, observation conditions A/B/C, models of different sizes. Costs money; run manually or on schedule only.",
+  "cases": [
+    {
+      "id": "lake-dawn",
+      "kind": "live-session",
+      "brief": "A quiet mountain lake at dawn: pale sky, layered blue mountains, still water with soft reflections.",
+      "pairs": [
+        { "painter": "claude-opus-5-5", "critic": "claude-opus-5-5" },
+        { "painter": "claude-haiku-5-5", "critic": "claude-opus-5-5" },
+        { "painter": "local-ollama", "critic": "claude-opus-5-5" }
+      ],
+      "judge": "claude-opus-5-5",
+      "conditions": ["A", "B", "C"],
+      "canvas": { "width": 1024, "height": 768, "seed": 42 },
+      "maxIterations": 5
+    },
+    {
+      "id": "sea-dusk",
+      "kind": "live-session",
+      "brief": "A wide sea at dusk under a heavy orange sky, a single distant headland, waves catching the light.",
+      "pairs": [
+        { "painter": "claude-opus-5-5", "critic": "claude-opus-5-5" },
+        { "painter": "claude-haiku-5-5", "critic": "claude-opus-5-5" }
+      ],
+      "judge": "claude-opus-5-5",
+      "conditions": ["A", "B", "C"],
+      "canvas": { "width": 1024, "height": 768, "seed": 7 },
+      "maxIterations": 5
+    }
+  ]
+}
