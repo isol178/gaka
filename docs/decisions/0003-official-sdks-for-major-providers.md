@@ -12,7 +12,7 @@ informed: []
 
 ## Context and Problem Statement
 
-ADR 0001 では、すべてのモデル接続を SDK を使わない HTTP で実装するとした。アダプターの形を揃えるためだったが、当面の試行は主要プロバイダー（Anthropic、OpenAI）で行う。この2社は公式 SDK を出しており、再試行・タイムアウト・型付きのエラー・API バージョンの追従を SDK が担う。HTTP の自前実装でこれらを保守し続ける利点は小さい。この ADR は 0001 のうち「モデル接続は SDK を使わず HTTP で実装する」の項だけを改める。
+ADR 0001 では、すべてのモデル接続を SDK を使わない HTTP で実装するとした。アダプターの形を揃えるためだったが、当面の試行は主要プロバイダー（Anthropic、OpenAI、Google）で行う。いずれも公式 SDK を出しており、再試行・タイムアウト・型付きのエラー・API バージョンの追従を SDK が担う。HTTP の自前実装でこれらを保守し続ける利点は小さい。この ADR は 0001 のうち「モデル接続は SDK を使わず HTTP で実装する」の項だけを改める。
 
 ## Decision Drivers
 
@@ -35,6 +35,7 @@ Chosen option: "SDK のあるプロバイダーは公式 SDK、ないものは H
 |---|---|---|
 | `anthropic` | `@anthropic-ai/sdk` | Anthropic |
 | `openai` | `openai` | OpenAI |
+| `google` | `@google/genai` | Google（Gemini API） |
 | `openai-compatible` | HTTP（fetch） | Ollama、vLLM、llama.cpp server など、自前の SDK を持たない OpenAI 互換サーバー |
 | `scripted` | 記録した応答 | テストとリプレイ評価 |
 
@@ -74,7 +75,7 @@ SDK にしかない機能（サーバー側の拒否時フォールバック、�
 ## More Information
 
 - **Confidence**: 高
-- **Re-evaluation triggers**: SDK の更新で、ハーネスが前提とする「テキストを返す」振る舞いが変わった場合。Google など他の主要プロバイダーを足す場合（同じ方針で SDK アダプターを足す）。OpenAI 互換サーバーで HTTP アダプターでは足りない差が出た場合。
+- **Re-evaluation triggers**: SDK の更新で、ハーネスが前提とする「テキストを返す」振る舞いが変わった場合。他の主要プロバイダーを足す場合（同じ方針で SDK アダプターを足す）。OpenAI 互換サーバーで HTTP アダプターでは足りない差が出た場合。
 - **References**:
   - `docs/decisions/0001-typescript-harness-with-python-observer.md`（この ADR で一部を改訂）
   - `packages/harness/src/model/sdk.ts`、`packages/harness/src/model/http.ts`

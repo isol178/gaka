@@ -1,0 +1,12 @@
+{
+  "$schema": "../../packages/harness/schema/capability-profile.schema.json",
+  "id": "gemini-3-5-flash-lite",
+  "adapter": "google",
+  "model": "gemini-3.5-flash-lite",
+  "apiKeyEnv": "GEMINI_API_KEY",
+  "vision": true,
+  "imageTokensPerMegapixel": 437,
+  "imageTokensMinPerImage": 258,
+  "contextTokens": 1048576,
+  "pricing": { "inputPerMTok": 0.3, "outputPerMTok": 2.5 }
+}

@@ -10,6 +10,7 @@
     "@anthropic-ai/sdk": "^1.8.0",
     "@gaka/dsl": "workspace:*",
     "@gaka/renderer": "workspace:*",
+    "@google/genai": "^3.3.0",
     "ajv": "^8.20.0",
     "openai": "^7.57.0"
   }

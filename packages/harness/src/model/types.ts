@@ -38,13 +38,15 @@ export interface ModelAdapter {
 export interface CapabilityProfile {
   id: string;
   /** SDK adapters for providers that ship one; "openai-compatible" is plain HTTP for those that do not. */
-  adapter: "scripted" | "anthropic" | "openai" | "openai-compatible";
+  adapter: "scripted" | "anthropic" | "openai" | "google" | "openai-compatible";
   model: string;
   baseUrl?: string;
   apiKeyEnv?: string;
   vision: boolean;
   /** Image input cost scales with pixel count; the observer budgets per image size with this. */
   imageTokensPerMegapixel: number;
+  /** Floor per image, for providers that bill small images at a flat rate (e.g. Gemini). */
+  imageTokensMinPerImage?: number;
   contextTokens: number;
   pricing: { inputPerMTok: number; outputPerMTok: number };
 }
@@ -56,7 +58,8 @@ export function pngSize(png: Buffer): { width: number; height: number } {
 
 export function estimateImageTokens(profile: CapabilityProfile, png: Buffer): number {
   const { width, height } = pngSize(png);
-  return Math.ceil(((width * height) / 1_000_000) * profile.imageTokensPerMegapixel);
+  const scaled = Math.ceil(((width * height) / 1_000_000) * profile.imageTokensPerMegapixel);
+  return Math.max(profile.imageTokensMinPerImage ?? 0, scaled);
 }
 
 export function addUsage(a: Usage, b: Usage): Usage {

@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { FinishReason, GoogleGenAI } from "@google/genai";
 import OpenAI from "openai";
 import {
   type CapabilityProfile,
@@ -139,6 +140,73 @@ export class OpenAIAdapter implements ModelAdapter {
       usage: {
         inputTokens: res.usage?.prompt_tokens ?? 0,
         outputTokens: res.usage?.completion_tokens ?? 0,
+        imageTokens: imageTokens(this.profile, req),
+      },
+    };
+  }
+}
+
+const GOOGLE_REFUSALS = new Set<string>([
+  FinishReason.SAFETY,
+  FinishReason.RECITATION,
+  FinishReason.BLOCKLIST,
+  FinishReason.PROHIBITED_CONTENT,
+  FinishReason.SPII,
+]);
+
+export class GoogleAdapter implements ModelAdapter {
+  private readonly client: GoogleGenAI;
+
+  constructor(
+    readonly profile: CapabilityProfile,
+    opts: SdkOptions = {},
+  ) {
+    const env = opts.env ?? process.env;
+    this.client = new GoogleGenAI({
+      apiKey: requireKey(profile, env),
+      httpOptions: {
+        ...(profile.baseUrl ? { baseUrl: profile.baseUrl } : {}),
+        ...(opts.fetch ? { fetch: opts.fetch } : {}),
+      },
+    });
+  }
+
+  async complete(req: ModelRequest): Promise<ModelResponse> {
+    const res = await this.client.models.generateContent({
+      model: this.profile.model,
+      contents: [
+        {
+          role: "user",
+          parts: [
+            ...(req.images ?? []).map((img) => ({
+              inlineData: { mimeType: "image/png", data: img.png.toString("base64") },
+            })),
+            { text: req.prompt },
+          ],
+        },
+      ],
+      config: {
+        systemInstruction: req.system,
+        ...(req.maxOutputTokens ? { maxOutputTokens: req.maxOutputTokens } : {}),
+      },
+    });
+    const finish = res.candidates?.[0]?.finishReason;
+    const blocked = res.promptFeedback?.blockReason !== undefined;
+    const u = res.usageMetadata;
+    return {
+      text: res.text ?? "",
+      stopReason:
+        blocked || (finish !== undefined && GOOGLE_REFUSALS.has(finish))
+          ? "refusal"
+          : finish === FinishReason.MAX_TOKENS
+            ? "max_tokens"
+            : finish === FinishReason.STOP
+              ? "end"
+              : "other",
+      usage: {
+        inputTokens: u?.promptTokenCount ?? 0,
+        // Thinking tokens are billed as output.
+        outputTokens: (u?.candidatesTokenCount ?? 0) + (u?.thoughtsTokenCount ?? 0),
         imageTokens: imageTokens(this.profile, req),
       },
     };

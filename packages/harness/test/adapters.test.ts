@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   AnthropicAdapter,
   createAdapter,
+  estimateImageTokens,
+  GoogleAdapter,
   OpenAIAdapter,
   OpenAICompatibleAdapter,
   parseProfile,
@@ -80,6 +82,9 @@ describe("capability profiles", () => {
       AnthropicAdapter,
     );
     expect(createAdapter(openaiProfile, { OPENAI_API_KEY: "k" })).toBeInstanceOf(OpenAIAdapter);
+    expect(createAdapter(profile("gemini-4-carbon"), { GEMINI_API_KEY: "k" })).toBeInstanceOf(
+      GoogleAdapter,
+    );
     expect(createAdapter(profile("local-ollama"), {})).toBeInstanceOf(OpenAICompatibleAdapter);
   });
 });
@@ -184,5 +189,76 @@ describe("OpenAICompatibleAdapter (HTTP, servers without an SDK)", () => {
       prompt: "",
     });
     expect(res.stopReason).toBe("max_tokens");
+  });
+});
+
+const geminiResponse = (finish: string, extra: Record<string, unknown> = {}) => ({
+  candidates: [{ content: { role: "model", parts: [{ text: "{}" }] }, finishReason: finish }],
+  usageMetadata: { promptTokenCount: 7, candidatesTokenCount: 2, thoughtsTokenCount: 5 },
+  ...extra,
+});
+
+describe("GoogleAdapter (SDK)", () => {
+  it("sends inline images before text with a system instruction and counts thinking as output", async () => {
+    const fetch = fetchReturning(geminiResponse("STOP"));
+    const g = new GoogleAdapter(profile("gemini-4-carbon"), {
+      env: { GEMINI_API_KEY: "k" },
+      fetch,
+    });
+    const res = await g.complete({ system: "s", prompt: "p", images: [{ label: "full", png }] });
+    const sent = sentBody(fetch);
+    expect(sent.url).toMatch(
+      /generativelanguage\.googleapis\.com\/.*models\/gemini-4-carbon:generateContent$/,
+    );
+    expect(sent.headers.get("x-goog-api-key")).toBe("k");
+    expect(sent.body.systemInstruction.parts[0].text).toBe("s");
+    expect(sent.body.contents[0].parts.map((p: object) => Object.keys(p)[0])).toEqual([
+      "inlineData",
+      "text",
+    ]);
+    expect(res).toEqual({
+      text: "{}",
+      stopReason: "end",
+      usage: { inputTokens: 7, outputTokens: 7, imageTokens: 437 },
+    });
+  });
+
+  it.each([
+    ["MAX_TOKENS", "max_tokens"],
+    ["SAFETY", "refusal"],
+    ["PROHIBITED_CONTENT", "refusal"],
+  ])("maps finishReason %s to %s", async (finish, expected) => {
+    const fetch = fetchReturning(geminiResponse(finish));
+    const g = new GoogleAdapter(profile("gemini-4-carbon"), {
+      env: { GEMINI_API_KEY: "k" },
+      fetch,
+    });
+    expect((await g.complete({ system: "", prompt: "" })).stopReason).toBe(expected);
+  });
+
+  it("treats a blocked prompt as a refusal", async () => {
+    const fetch = fetchReturning({
+      promptFeedback: { blockReason: "SAFETY" },
+      usageMetadata: { promptTokenCount: 3 },
+    });
+    const g = new GoogleAdapter(profile("gemini-4-carbon"), {
+      env: { GEMINI_API_KEY: "k" },
+      fetch,
+    });
+    expect((await g.complete({ system: "", prompt: "" })).stopReason).toBe("refusal");
+  });
+});
+
+describe("estimateImageTokens", () => {
+  const sized = (w: number, h: number) => {
+    const b = Buffer.alloc(33);
+    b.writeUInt32BE(w, 16);
+    b.writeUInt32BE(h, 20);
+    return b;
+  };
+
+  it("applies the per-image floor for providers that bill small images at a flat rate", () => {
+    expect(estimateImageTokens(profile("gemini-4-carbon"), sized(256, 192))).toBe(258);
+    expect(estimateImageTokens(profile("claude-opus-5-5"), sized(256, 192))).toBe(66);
   });
 });

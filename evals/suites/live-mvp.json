@@ -11,6 +11,8 @@
       "pairs": [
         { "painter": "claude-opus-5-5", "critic": "claude-opus-5-5" },
         { "painter": "claude-haiku-5-5", "critic": "claude-opus-5-5" },
+        { "painter": "gemini-4-carbon", "critic": "gemini-4-carbon" },
+        { "painter": "gemini-3-5-flash-lite", "critic": "claude-opus-5-5" },
         { "painter": "local-ollama", "critic": "claude-opus-5-5" }
       ],
       "judge": "claude-opus-5-5",
