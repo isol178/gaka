@@ -1,0 +1,26 @@
+# Git hooks. Install with `pnpm setup` (or `pnpm exec lefthook install`).
+pre-commit:
+  parallel: true
+  jobs:
+    - name: biome
+      glob: "*.{ts,js,mjs,json,jsonc}"
+      run: pnpm exec biome check --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
+    - name: ruff
+      glob: "observer/**/*.py"
+      run: pnpm py:lint
+    - name: dsl-types-fresh
+      glob: "packages/dsl/schema/*.json"
+      run: pnpm gen:check
+    - name: adr
+      glob: "docs/decisions/*.md"
+      run: pnpm adr:check
+
+commit-msg:
+  jobs:
+    - name: commitlint
+      run: pnpm exec commitlint --edit {1}
+
+pre-push:
+  jobs:
+    - name: check
+      run: pnpm check
