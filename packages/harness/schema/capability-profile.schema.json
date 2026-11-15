@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CapabilityProfile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "adapter",
+    "model",
+    "vision",
+    "imageTokensPerMegapixel",
+    "contextTokens",
+    "pricing"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "adapter": { "enum": ["scripted", "anthropic", "openai", "google", "openai-compatible"] },
+    "model": { "type": "string", "minLength": 1 },
+    "baseUrl": { "type": "string" },
+    "apiKeyEnv": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+    "vision": { "type": "boolean" },
+    "imageTokensPerMegapixel": { "type": "number", "minimum": 0 },
+    "imageTokensMinPerImage": { "type": "integer", "minimum": 0 },
+    "contextTokens": { "type": "integer", "minimum": 1 },
+    "pricing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inputPerMTok", "outputPerMTok"],
+      "properties": {
+        "inputPerMTok": { "type": "number", "minimum": 0 },
+        "outputPerMTok": { "type": "number", "minimum": 0 }
+      }
+    }
+  },
+  "if": { "properties": { "adapter": { "const": "openai-compatible" } }, "required": ["adapter"] },
+  "then": { "required": ["baseUrl"] }
+}

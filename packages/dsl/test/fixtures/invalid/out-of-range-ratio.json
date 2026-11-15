@@ -1,0 +1,6 @@
+{
+  "version": "0.1",
+  "canvas": { "width": 64, "height": 64, "seed": 1 },
+  "regions": { "r": { "x": 0, "y": 0, "w": 1.5, "h": 1 } },
+  "layers": [{ "id": "a", "ops": [] }]
+}

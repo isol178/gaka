@@ -1,0 +1,35 @@
+{
+  "$schema": "../schema/suite.schema.json",
+  "id": "deterministic",
+  "tier": "deterministic",
+  "description": "No models involved. Guards the parts of the harness every model run depends on: schema, renderer determinism and observer metrics.",
+  "cases": [
+    {
+      "id": "schema-valid-fixtures",
+      "kind": "schema",
+      "dir": "packages/dsl/test/fixtures/valid",
+      "expect": "valid"
+    },
+    {
+      "id": "schema-invalid-fixtures",
+      "kind": "schema",
+      "dir": "packages/dsl/test/fixtures/invalid",
+      "expect": "invalid"
+    },
+    {
+      "id": "render-deterministic-mountain",
+      "kind": "render-determinism",
+      "painting": "packages/dsl/test/fixtures/valid/mountain-morning.json"
+    },
+    {
+      "id": "metrics-mountain-morning",
+      "kind": "metrics",
+      "painting": "packages/dsl/test/fixtures/valid/mountain-morning.json",
+      "expect": {
+        "luminance_mean": [0.45, 0.8],
+        "saturation_mean": [0.05, 0.5],
+        "edge_density": [0.01, 0.6]
+      }
+    }
+  ]
+}

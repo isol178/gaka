@@ -1,0 +1,11 @@
+{
+  "$schema": "../../packages/harness/schema/capability-profile.schema.json",
+  "id": "local-ollama",
+  "adapter": "openai-compatible",
+  "model": "qwen3:8b",
+  "baseUrl": "http://localhost:11434/v1",
+  "vision": false,
+  "imageTokensPerMegapixel": 0,
+  "contextTokens": 32768,
+  "pricing": { "inputPerMTok": 0, "outputPerMTok": 0 }
+}

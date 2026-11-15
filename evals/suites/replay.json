@@ -1,0 +1,59 @@
+{
+  "$schema": "../schema/suite.schema.json",
+  "id": "replay",
+  "tier": "replay",
+  "description": "Full Painter-Critic loop against recorded model replies. Checks retry handling, layer replacement and image-token budgeting per observation condition.",
+  "cases": [
+    {
+      "id": "retry-then-done-A",
+      "kind": "replay-session",
+      "brief": "A quiet mountain lake at dawn",
+      "cassette": "evals/cassettes/landscape-retry.json",
+      "condition": "A",
+      "canvas": { "width": 1024, "height": 768, "seed": 42 },
+      "expect": {
+        "status": "done",
+        "iterations": 2,
+        "maxRetries": 1,
+        "minFinalScore": 7,
+        "imagesShownLast": ["full"]
+      }
+    },
+    {
+      "id": "retry-then-done-B",
+      "kind": "replay-session",
+      "brief": "A quiet mountain lake at dawn",
+      "cassette": "evals/cassettes/landscape-retry.json",
+      "condition": "B",
+      "canvas": { "width": 1024, "height": 768, "seed": 42 },
+      "expect": {
+        "status": "done",
+        "iterations": 2,
+        "maxImageTokens": 200,
+        "imagesShownLast": ["thumbnail"]
+      }
+    },
+    {
+      "id": "retry-then-done-C",
+      "kind": "replay-session",
+      "brief": "A quiet mountain lake at dawn",
+      "cassette": "evals/cassettes/landscape-retry.json",
+      "condition": "C",
+      "canvas": { "width": 1024, "height": 768, "seed": 42 },
+      "expect": {
+        "status": "done",
+        "iterations": 2,
+        "imagesShownLast": ["thumbnail", "focus", "changed"]
+      }
+    },
+    {
+      "id": "blind-critic-numeric-only",
+      "kind": "replay-session",
+      "brief": "A quiet mountain lake at dawn",
+      "cassette": "evals/cassettes/landscape-retry.json",
+      "condition": "C",
+      "critic": "scripted-blind",
+      "expect": { "status": "done", "maxImageTokens": 0, "imagesShownLast": [] }
+    }
+  ]
+}

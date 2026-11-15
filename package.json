@@ -1,0 +1,51 @@
+{
+  "name": "gaka",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.2",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "bootstrap": "pnpm install && uv sync --project observer && lefthook install",
+    "gen": "pnpm --filter @gaka/dsl gen",
+    "gen:check": "pnpm gen && git diff --exit-code -- packages/dsl/src/types.gen.ts",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "py:lint": "cd observer && uv run ruff check . && uv run ruff format --check .",
+    "py:typecheck": "cd observer && uv run mypy",
+    "py:test": "cd observer && uv run pytest",
+    "adr:check": "uv run --quiet --no-project --with pyyaml python .claude/skills/adr/scripts/validate_adr.py --strict docs/decisions",
+    "hooks:test": "bash .claude/hooks/test/run.sh",
+    "check:fast": "pnpm lint && pnpm typecheck && pnpm py:lint",
+    "check": "pnpm gen:check && pnpm lint && pnpm typecheck && pnpm test && pnpm site:build && pnpm py:lint && pnpm py:typecheck && pnpm py:test && pnpm eval:offline && pnpm adr:check && pnpm hooks:test && pnpm lint:workflows && pnpm lint:shell",
+    "eval": "tsx packages/evals/src/cli.ts",
+    "eval:offline": "tsx packages/evals/src/cli.ts run --tier deterministic --tier replay",
+    "eval:live": "tsx packages/evals/src/cli.ts run --tier live",
+    "gaka": "tsx packages/harness/src/cli.ts",
+    "site:build": "tsx scripts/build-site.ts",
+    "py:format": "cd observer && uv run ruff format . && uv run ruff check --fix .",
+    "adr:new": "uv run --quiet --no-project --with pyyaml python .claude/skills/adr/scripts/new_adr.py",
+    "lint:workflows": "uv tool run --quiet --from actionlint-py==1.7.12.25 --with shellcheck-py==0.11.0.1 actionlint",
+    "lint:shell": "uv tool run --quiet --from shellcheck-py==0.11.0.1 shellcheck -x -P SCRIPTDIR .claude/hooks/*.sh .claude/hooks/test/*.sh"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.7",
+    "@commitlint/cli": "^21.2.4",
+    "@commitlint/config-conventional": "^21.2.4",
+    "@gaka/dsl": "workspace:*",
+    "@gaka/renderer": "workspace:*",
+    "@types/node": "^26.6.6",
+    "@vitest/coverage-v8": "^5.1.0",
+    "esbuild": "^0.28.2",
+    "lefthook": "^2.2.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}

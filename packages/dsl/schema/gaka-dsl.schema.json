@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/isol178/gaka/schema/gaka-dsl.schema.json",
+  "title": "Painting",
+  "description": "Gaka brush-stroke DSL (MVP subset: stroke / fill / glaze / noise). Coordinates and sizes are ratios in [0, 1].",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "canvas", "layers"],
+  "properties": {
+    "version": { "const": "0.1" },
+    "canvas": { "$ref": "#/$defs/Canvas" },
+    "regions": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/Identifier" },
+      "additionalProperties": { "$ref": "#/$defs/Region" }
+    },
+    "layers": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": { "$ref": "#/$defs/Layer" }
+    }
+  },
+  "$defs": {
+    "Identifier": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,31}$" },
+    "Color": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+    "Ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+    "Canvas": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height", "seed"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 16, "maximum": 4096 },
+        "height": { "type": "integer", "minimum": 16, "maximum": 4096 },
+        "seed": { "type": "integer", "minimum": 0, "maximum": 4294967295 }
+      }
+    },
+    "Region": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "w", "h"],
+      "properties": {
+        "x": { "$ref": "#/$defs/Ratio" },
+        "y": { "$ref": "#/$defs/Ratio" },
+        "w": { "$ref": "#/$defs/Ratio" },
+        "h": { "$ref": "#/$defs/Ratio" }
+      }
+    },
+    "RegionRef": {
+      "description": "Name of a region declared in `regions`. Omit to target the whole canvas.",
+      "$ref": "#/$defs/Identifier"
+    },
+    "Layer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "ops"],
+      "properties": {
+        "id": { "$ref": "#/$defs/Identifier" },
+        "ops": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/Op" } }
+      }
+    },
+    "Op": {
+      "oneOf": [
+        { "$ref": "#/$defs/FillOp" },
+        { "$ref": "#/$defs/StrokeOp" },
+        { "$ref": "#/$defs/GlazeOp" },
+        { "$ref": "#/$defs/NoiseOp" }
+      ]
+    },
+    "FillOp": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "color"],
+      "properties": {
+        "op": { "const": "fill" },
+        "region": { "$ref": "#/$defs/RegionRef" },
+        "color": { "$ref": "#/$defs/Color" },
+        "colorTo": {
+          "$ref": "#/$defs/Color",
+          "description": "Optional second color for a vertical gradient."
+        },
+        "opacity": { "$ref": "#/$defs/Ratio", "default": 1 }
+      }
+    },
+    "StrokeOp": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "palette"],
+      "properties": {
+        "op": { "const": "stroke" },
+        "region": { "$ref": "#/$defs/RegionRef" },
+        "dir": {
+          "enum": ["horizontal", "vertical", "diagonal", "random"],
+          "default": "horizontal"
+        },
+        "length": { "enum": ["short", "medium", "long"], "default": "medium" },
+        "width": { "enum": ["fine", "medium", "broad"], "default": "medium" },
+        "density": { "enum": ["low", "medium", "high"], "default": "medium" },
+        "palette": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": { "$ref": "#/$defs/Color" }
+        },
+        "jitter": { "$ref": "#/$defs/Ratio", "default": 0.1 },
+        "opacity": { "$ref": "#/$defs/Ratio", "default": 0.6 }
+      }
+    },
+    "GlazeOp": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "color", "opacity"],
+      "properties": {
+        "op": { "const": "glaze" },
+        "region": { "$ref": "#/$defs/RegionRef" },
+        "color": { "$ref": "#/$defs/Color" },
+        "opacity": { "$ref": "#/$defs/Ratio" }
+      }
+    },
+    "NoiseOp": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "strength"],
+      "properties": {
+        "op": { "const": "noise" },
+        "region": { "$ref": "#/$defs/RegionRef" },
+        "strength": { "type": "number", "minimum": 0, "maximum": 0.5 }
+      }
+    }
+  }
+}

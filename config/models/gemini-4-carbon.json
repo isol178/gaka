@@ -1,0 +1,12 @@
+{
+  "$schema": "../../packages/harness/schema/capability-profile.schema.json",
+  "id": "gemini-4-carbon",
+  "adapter": "google",
+  "model": "gemini-4-carbon",
+  "apiKeyEnv": "GEMINI_API_KEY",
+  "vision": true,
+  "imageTokensPerMegapixel": 437,
+  "imageTokensMinPerImage": 258,
+  "contextTokens": 1048576,
+  "pricing": { "inputPerMTok": 4, "outputPerMTok": 20 }
+}

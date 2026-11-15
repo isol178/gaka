@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EvalSuite",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "tier", "description", "cases"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+    "tier": { "enum": ["deterministic", "replay", "live"] },
+    "description": { "type": "string" },
+    "cases": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/Case" } }
+  },
+  "$defs": {
+    "Range": {
+      "type": "array",
+      "prefixItems": [{ "type": "number" }, { "type": "number" }],
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "Canvas": {
+      "type": "object",
+      "required": ["width", "height", "seed"],
+      "properties": {
+        "width": { "type": "integer" },
+        "height": { "type": "integer" },
+        "seed": { "type": "integer" }
+      }
+    },
+    "Case": {
+      "oneOf": [
+        { "$ref": "#/$defs/SchemaCase" },
+        { "$ref": "#/$defs/RenderDeterminismCase" },
+        { "$ref": "#/$defs/MetricsCase" },
+        { "$ref": "#/$defs/ReplaySessionCase" },
+        { "$ref": "#/$defs/LiveSessionCase" }
+      ]
+    },
+    "SchemaCase": {
+      "description": "Every JSON file under `dir` must validate (expect=valid) or be rejected (expect=invalid).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "dir", "expect"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "const": "schema" },
+        "dir": { "type": "string" },
+        "expect": { "enum": ["valid", "invalid"] }
+      }
+    },
+    "RenderDeterminismCase": {
+      "description": "Rendering the painting twice must produce identical pixels.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "painting"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "const": "render-determinism" },
+        "painting": { "type": "string" }
+      }
+    },
+    "MetricsCase": {
+      "description": "Observer metrics of the rendered painting must fall into the given ranges.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "painting", "expect"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "const": "metrics" },
+        "painting": { "type": "string" },
+        "expect": { "type": "object", "additionalProperties": { "$ref": "#/$defs/Range" } }
+      }
+    },
+    "ReplaySessionCase": {
+      "description": "Runs the full loop against a recorded cassette (no network).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "brief", "cassette", "condition", "expect"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "const": "replay-session" },
+        "brief": { "type": "string" },
+        "cassette": { "type": "string" },
+        "condition": { "enum": ["A", "B", "C"] },
+        "critic": { "type": "string", "default": "scripted" },
+        "canvas": { "$ref": "#/$defs/Canvas" },
+        "maxIterations": { "type": "integer", "minimum": 1, "default": 5 },
+        "maxRetries": { "type": "integer", "minimum": 0, "default": 2 },
+        "imageTokenBudget": { "type": "integer", "minimum": 0, "default": 4000 },
+        "expect": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "status": { "enum": ["done", "max_iterations", "invalid_output", "refused", "error"] },
+            "iterations": { "type": "integer" },
+            "maxRetries": { "type": "integer" },
+            "minFinalScore": { "type": "number" },
+            "maxImageTokens": { "type": "integer" },
+            "imagesShownLast": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "LiveSessionCase": {
+      "description": "Paints a brief with real models over the painter/critic/condition matrix. Requires API keys and costs money.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "brief", "pairs", "conditions"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "const": "live-session" },
+        "brief": { "type": "string" },
+        "pairs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["painter", "critic"],
+            "properties": { "painter": { "type": "string" }, "critic": { "type": "string" } }
+          }
+        },
+        "judge": {
+          "type": "string",
+          "description": "Profile of a fixed, independent judge that scores the final image (not the in-loop critic)."
+        },
+        "conditions": { "type": "array", "minItems": 1, "items": { "enum": ["A", "B", "C"] } },
+        "repeats": { "type": "integer", "minimum": 1, "default": 1 },
+        "canvas": { "$ref": "#/$defs/Canvas" },
+        "maxIterations": { "type": "integer", "minimum": 1, "default": 5 },
+        "maxRetries": { "type": "integer", "minimum": 0, "default": 2 },
+        "imageTokenBudget": { "type": "integer", "minimum": 0, "default": 4000 }
+      }
+    }
+  }
+}
