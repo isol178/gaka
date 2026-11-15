@@ -33,13 +33,22 @@ async function postJson(
  * llama.cpp server, ...). Providers with an official SDK use the adapters in sdk.ts.
  */
 export class OpenAICompatibleAdapter implements ModelAdapter {
+  private readonly key: string | undefined;
+  private readonly baseUrl: string;
+
+  /** Fails fast, like the SDK adapters: configuration errors surface before any call is billed. */
   constructor(
     readonly profile: CapabilityProfile,
-    private readonly env: NodeJS.ProcessEnv = process.env,
-  ) {}
+    env: NodeJS.ProcessEnv = process.env,
+  ) {
+    // OpenAI itself goes through OpenAIAdapter (sdk.ts); plain HTTP is only for servers without an SDK.
+    if (!profile.baseUrl)
+      throw new Error(`profile '${profile.id}' (openai-compatible) needs baseUrl`);
+    this.baseUrl = profile.baseUrl.replace(/\/$/, "");
+    this.key = apiKey(profile, env);
+  }
 
   async complete(req: ModelRequest): Promise<ModelResponse> {
-    const key = apiKey(this.profile, this.env);
     const content = [
       { type: "text", text: req.prompt },
       ...(req.images ?? []).map((img) => ({
@@ -55,12 +64,9 @@ export class OpenAICompatibleAdapter implements ModelAdapter {
       ],
       ...(req.maxOutputTokens ? { max_tokens: req.maxOutputTokens } : {}),
     };
-    const base = this.profile.baseUrl;
-    // OpenAI itself goes through OpenAIAdapter (sdk.ts); plain HTTP is only for servers without an SDK.
-    if (!base) throw new Error(`profile '${this.profile.id}' (openai-compatible) needs baseUrl`);
     const json = (await postJson(
-      `${base.replace(/\/$/, "")}/chat/completions`,
-      key ? { authorization: `Bearer ${key}` } : {},
+      `${this.baseUrl}/chat/completions`,
+      this.key ? { authorization: `Bearer ${this.key}` } : {},
       body,
     )) as {
       choices: { message: { content: string | null }; finish_reason?: string }[];

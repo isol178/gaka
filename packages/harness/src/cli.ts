@@ -44,6 +44,11 @@ const criticProfile = get(values.critic);
 const outDir =
   values.out ?? join(REPO_ROOT, "runs", new Date().toISOString().replace(/[:.]/g, "-"));
 
+// Adapters are built first: a missing key or baseUrl fails here, before any call is billed, and
+// configuration errors (which name env vars) never reach the session error printed below.
+const painter = createAdapter(painterProfile);
+const critic = createAdapter(criticProfile);
+
 let record: SessionRecord;
 let error: string | undefined;
 try {
@@ -54,8 +59,8 @@ try {
       height: Number(values.height),
       seed: Number(values.seed),
     },
-    painter: createAdapter(painterProfile),
-    critic: createAdapter(criticProfile),
+    painter,
+    critic,
     maxIterations: Number(values.iterations),
     maxRetries: Number(values.retries),
     observation: values.condition as ObservationCondition,

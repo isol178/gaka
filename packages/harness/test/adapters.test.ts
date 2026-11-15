@@ -194,12 +194,12 @@ describe("OpenAICompatibleAdapter (HTTP, servers without an SDK)", () => {
   it("refuses to fall back to api.openai.com when baseUrl is missing", async () => {
     const { baseUrl: _omit, ...noBase } = profile("local-ollama");
     expect(() => parseProfile(noBase)).toThrow(/invalid capability profile/);
-    const fetchSpy = vi.fn();
-    vi.stubGlobal("fetch", fetchSpy);
-    await expect(
-      new OpenAICompatibleAdapter(noBase, {}).complete({ system: "", prompt: "" }),
-    ).rejects.toThrow(/needs baseUrl/);
-    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(() => new OpenAICompatibleAdapter(noBase, {})).toThrow(/needs baseUrl/);
+  });
+
+  it("fails at construction, not mid-session, when its API key env var is missing", () => {
+    const keyed = { ...profile("local-ollama"), apiKeyEnv: "LOCAL_LLM_KEY" };
+    expect(() => new OpenAICompatibleAdapter(keyed, {})).toThrow(/LOCAL_LLM_KEY/);
   });
 });
 
