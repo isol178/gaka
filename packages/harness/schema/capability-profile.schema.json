@@ -32,5 +32,7 @@
         "outputPerMTok": { "type": "number", "minimum": 0 }
       }
     }
-  }
+  },
+  "if": { "properties": { "adapter": { "const": "openai-compatible" } }, "required": ["adapter"] },
+  "then": { "required": ["baseUrl"] }
 }

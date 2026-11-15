@@ -1,9 +1,9 @@
 import {
   type CapabilityProfile,
-  estimateImageTokens,
   type ModelAdapter,
   type ModelRequest,
   type ModelResponse,
+  requestImageTokens,
 } from "./types.ts";
 
 export interface ScriptedTurn {
@@ -30,10 +30,7 @@ export class ScriptedAdapter implements ModelAdapter {
     if (turn === undefined) {
       throw new Error(`scripted adapter '${this.profile.id}' ran out of turns at #${this.cursor}`);
     }
-    const imageTokens = (req.images ?? []).reduce(
-      (n, im) => n + estimateImageTokens(this.profile, im.png),
-      0,
-    );
+    const imageTokens = requestImageTokens(this.profile, req);
     return {
       text: turn.text,
       usage: {

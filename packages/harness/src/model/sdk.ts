@@ -3,10 +3,10 @@ import { FinishReason, GoogleGenAI } from "@google/genai";
 import OpenAI from "openai";
 import {
   type CapabilityProfile,
-  estimateImageTokens,
   type ModelAdapter,
   type ModelRequest,
   type ModelResponse,
+  requestImageTokens,
 } from "./types.ts";
 
 /**
@@ -20,10 +20,6 @@ function requireKey(profile: CapabilityProfile, env: NodeJS.ProcessEnv): string 
   if (!name || !key)
     throw new Error(`profile '${profile.id}' needs env ${name ?? "(apiKeyEnv unset)"}`);
   return key;
-}
-
-function imageTokens(profile: CapabilityProfile, req: ModelRequest): number {
-  return (req.images ?? []).reduce((n, im) => n + estimateImageTokens(profile, im.png), 0);
 }
 
 export interface SdkOptions {
@@ -86,7 +82,7 @@ export class AnthropicAdapter implements ModelAdapter {
       usage: {
         inputTokens: res.usage.input_tokens,
         outputTokens: res.usage.output_tokens,
-        imageTokens: imageTokens(this.profile, req),
+        imageTokens: requestImageTokens(this.profile, req),
       },
     };
   }
@@ -140,7 +136,7 @@ export class OpenAIAdapter implements ModelAdapter {
       usage: {
         inputTokens: res.usage?.prompt_tokens ?? 0,
         outputTokens: res.usage?.completion_tokens ?? 0,
-        imageTokens: imageTokens(this.profile, req),
+        imageTokens: requestImageTokens(this.profile, req),
       },
     };
   }
@@ -207,7 +203,7 @@ export class GoogleAdapter implements ModelAdapter {
         inputTokens: u?.promptTokenCount ?? 0,
         // Thinking tokens are billed as output.
         outputTokens: (u?.candidatesTokenCount ?? 0) + (u?.thoughtsTokenCount ?? 0),
-        imageTokens: imageTokens(this.profile, req),
+        imageTokens: requestImageTokens(this.profile, req),
       },
     };
   }

@@ -62,6 +62,11 @@ export function estimateImageTokens(profile: CapabilityProfile, png: Buffer): nu
   return Math.max(profile.imageTokensMinPerImage ?? 0, scaled);
 }
 
+/** Estimated image tokens for all images in a request. */
+export function requestImageTokens(profile: CapabilityProfile, req: ModelRequest): number {
+  return (req.images ?? []).reduce((n, im) => n + estimateImageTokens(profile, im.png), 0);
+}
+
 export function addUsage(a: Usage, b: Usage): Usage {
   return {
     inputTokens: a.inputTokens + b.inputTokens,

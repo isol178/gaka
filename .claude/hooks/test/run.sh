@@ -52,6 +52,27 @@ expect "deny tee .env.local" "$(decision guard-bash.sh "$(bash_cmd 'echo A=1 | t
 expect "allow commit message mentioning baselines" "$(decision guard-bash.sh "$(bash_cmd 'git commit -m "create evals/baselines on clone" 2>&1 | grep x')")" none
 expect "allow redirect elsewhere mentioning .env" "$(decision guard-bash.sh "$(bash_cmd 'grep -r "\.env" docs > /tmp/out.txt')")" none
 expect "allow normal commit" "$(decision guard-bash.sh "$(bash_cmd 'git commit -m "feat: x"')")" none
+expect "deny push HEAD:main" "$(decision guard-bash.sh "$(bash_cmd 'git push origin HEAD:main')")" deny
+expect "deny push refs/heads/main" "$(decision guard-bash.sh "$(bash_cmd 'git push origin feat:refs/heads/main')")" deny
+expect "deny +refspec force push" "$(decision guard-bash.sh "$(bash_cmd 'git push origin +feat')")" deny
+expect "deny -uf force push" "$(decision guard-bash.sh "$(bash_cmd 'git push -uf origin feat')")" deny
+expect "allow --follow-tags push" "$(decision guard-bash.sh "$(bash_cmd 'git push --follow-tags origin feat')")" none
+expect "deny baselines with --update-baseline in a comment" "$(decision guard-bash.sh "$(bash_cmd 'echo {} > evals/baselines/live-mvp.json # --update-baseline')")" deny
+expect "deny .env write followed by ;" "$(decision guard-bash.sh "$(bash_cmd 'echo A=1 > .env;')")" deny
+expect "deny .env write followed by &&" "$(decision guard-bash.sh "$(bash_cmd 'echo KEY=1 >> .env&&ls')")" deny
+expect "deny .env.production" "$(decision guard-bash.sh "$(bash_cmd 'echo A=1 > .env.production')")" deny
+expect "allow writing .env.example" "$(decision guard-bash.sh "$(bash_cmd 'echo A= >> .env.example')")" none
+
+# guard-bash: a push without a refspec while on main updates main.
+tmp_repo=$(mktemp -d)
+git -C "$tmp_repo" init -q -b main
+on_main() { (export CLAUDE_PROJECT_DIR="$tmp_repo"; decision guard-bash.sh "$(bash_cmd "$1")"); }
+expect "deny bare push on main" "$(on_main 'git push')" deny
+expect "deny push -u origin on main" "$(on_main 'git push -u origin')" deny
+expect "allow pushing another branch from main" "$(on_main 'git push origin feat')" none
+git -C "$tmp_repo" checkout -q -b feat
+expect "allow bare push on a branch" "$(on_main 'git push')" none
+rm -rf "${tmp_repo:?}"
 
 # format-file: a file outside the repo and a markdown file are ignored (exit 0)
 printf '%s' "$(edit /tmp/outside.ts)" | "$HOOKS/format-file.sh"; expect "format ignores outside" "$?" 0

@@ -10,10 +10,11 @@ import {
   runSession,
   ScriptedAdapter,
   type ScriptedTurn,
+  SessionError,
   type SessionRecord,
 } from "@gaka/harness";
 import { renderPainting } from "@gaka/renderer/node";
-import { judge } from "./judge.ts";
+import { JudgeError, judge } from "./judge.ts";
 import { type Case, repoPath } from "./suite.ts";
 
 export interface CaseResult {
@@ -47,6 +48,11 @@ function loadPainting(path: string) {
   const r = parsePainting(readFileSync(repoPath(path), "utf8"));
   if (!r.ok) throw new Error(`${path}: ${r.errors.join("; ")}`);
   return r.painting;
+}
+
+/** Env vars the profiles need that are not set. Checked up front so a missing key is a skip, not a failure. */
+function missingEnv(ctx: RunContext, ...profiles: CapabilityProfile[]): string[] {
+  return profiles.map((p) => p.apiKeyEnv).filter((k): k is string => !!k && !ctx.env[k]);
 }
 
 function sessionMetrics(record: SessionRecord): CaseResult["metrics"] {
@@ -160,9 +166,14 @@ async function runOne(
     }
     case "live-session": {
       const out: Omit<CaseResult, "suite" | "caseId" | "durationMs">[] = [];
-      const judgeModel: ModelAdapter | undefined = c.judge
-        ? createAdapter(profileOf(ctx, c.judge), ctx.env)
-        : undefined;
+      // A missing judge key must not fail the case: live results are recorded per variant and never
+      // gate. Without the key the sessions still run and only the judge score is left out.
+      const judgeProfile = c.judge ? profileOf(ctx, c.judge) : undefined;
+      const judgeMissing = judgeProfile ? missingEnv(ctx, judgeProfile) : [];
+      const judgeModel: ModelAdapter | undefined =
+        judgeProfile && judgeMissing.length === 0
+          ? createAdapter(judgeProfile, ctx.env)
+          : undefined;
       for (const pair of c.pairs) {
         for (const condition of c.conditions) {
           for (let rep = 1; rep <= (c.repeats ?? 1); rep++) {
@@ -179,9 +190,7 @@ async function runOne(
             }
             const pp = profileOf(ctx, pair.painter);
             const cp = profileOf(ctx, pair.critic);
-            const missing = [pp, cp]
-              .map((p) => p.apiKeyEnv)
-              .filter((k): k is string => !!k && !ctx.env[k]);
+            const missing = missingEnv(ctx, pp, cp);
             if (missing.length > 0) {
               out.push({
                 variant,
@@ -192,8 +201,10 @@ async function runOne(
               });
               continue;
             }
+            let record: SessionRecord;
+            const errors: string[] = [];
             try {
-              const record = await runSession({
+              record = await runSession({
                 brief: c.brief,
                 canvas: c.canvas ?? { width: 1024, height: 768, seed: 42 },
                 painter: createAdapter(pp, ctx.env),
@@ -203,11 +214,28 @@ async function runOne(
                 observation: condition,
                 imageTokenBudget: c.imageTokenBudget ?? 4000,
               });
-              const metrics = sessionMetrics(record);
-              const cost = costUsd(pp, record.usage.painter) + costUsd(cp, record.usage.critic);
-              metrics.costUsd = Number(cost.toFixed(4));
-              ctx.spentUsd += cost;
-              if (judgeModel && record.finalPainting) {
+            } catch (err) {
+              if (!(err instanceof SessionError)) {
+                out.push({ variant, pass: false, errors: [(err as Error).message], metrics: {} });
+                continue;
+              }
+              // The calls made before the failure were billed: count them toward the guard.
+              record = err.record;
+              errors.push(err.message);
+            }
+            const metrics = sessionMetrics(record);
+            const cost = costUsd(pp, record.usage.painter) + costUsd(cp, record.usage.critic);
+            metrics.costUsd = Number(cost.toFixed(4));
+            ctx.spentUsd += cost;
+            const ok =
+              errors.length === 0 &&
+              record.status !== "invalid_output" &&
+              record.status !== "refused";
+            if (ok && judgeMissing.length > 0) {
+              metrics.judgeSkipped = `missing env ${judgeMissing.join(", ")}`;
+            } else if (ok && judgeModel && record.finalPainting) {
+              // A judge failure is the judge's problem: keep the session's own result and metrics.
+              try {
                 const j = await judge(
                   judgeModel,
                   c.brief,
@@ -216,11 +244,13 @@ async function runOne(
                 metrics.judgeScore = j.score.score;
                 // Judge spend counts toward the cost guard but not the run's efficiency metrics.
                 ctx.spentUsd += costUsd(judgeModel.profile, j.usage);
+              } catch (err) {
+                metrics.judgeError = (err as Error).message;
+                if (err instanceof JudgeError)
+                  ctx.spentUsd += costUsd(judgeModel.profile, err.usage);
               }
-              out.push({ variant, pass: record.status !== "invalid_output", errors: [], metrics });
-            } catch (err) {
-              out.push({ variant, pass: false, errors: [(err as Error).message], metrics: {} });
             }
+            out.push({ variant, pass: ok, errors, metrics });
           }
         }
       }

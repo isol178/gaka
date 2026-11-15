@@ -1,9 +1,13 @@
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   type ObservationCondition,
   replaceLayer,
   runSession,
   ScriptedAdapter,
+  SessionError,
 } from "../src/index.ts";
 import { CANVAS, cassette, profile } from "./helpers.ts";
 
@@ -143,5 +147,67 @@ describe("runSession stop reasons", () => {
     });
     expect(record.iterations[0]?.rejected[0]?.[0]).toMatch(/cut off/);
     expect(painter.requests[0]?.prompt).toContain("cut off");
+  });
+});
+
+describe("runSession failures keep the partial record", () => {
+  const c = cassette("landscape-retry");
+  const refusingCritic = {
+    profile: profile("scripted"),
+    async complete() {
+      return {
+        text: "",
+        usage: { inputTokens: 5, outputTokens: 1, imageTokens: 0 },
+        stopReason: "refusal" as const,
+      };
+    },
+  };
+
+  it("ends with status refused and still writes session.json", async () => {
+    const outDir = mkdtempSync(join(tmpdir(), "gaka-session-"));
+    try {
+      const record = await runSession({
+        brief: "x",
+        canvas: CANVAS,
+        painter: new ScriptedAdapter(profile("scripted"), c.painter),
+        critic: refusingCritic,
+        maxIterations: 3,
+        maxRetries: 2,
+        observation: "B",
+        imageTokenBudget: 0,
+        outDir,
+      });
+      expect(record.status).toBe("refused");
+      expect(record.usage.critic.inputTokens).toBe(5);
+      expect(record.usage.painter.inputTokens).toBeGreaterThan(0);
+      const saved = JSON.parse(readFileSync(join(outDir, "session.json"), "utf8"));
+      expect(saved.status).toBe("refused");
+    } finally {
+      rmSync(outDir, { recursive: true, force: true });
+    }
+  });
+
+  it("throws a SessionError carrying the usage spent before an unexpected error", async () => {
+    const failingCritic = {
+      profile: profile("scripted"),
+      async complete(): Promise<never> {
+        throw new Error("HTTP 529 overloaded");
+      },
+    };
+    const err = await runSession({
+      brief: "x",
+      canvas: CANVAS,
+      painter: new ScriptedAdapter(profile("scripted"), c.painter),
+      critic: failingCritic,
+      maxIterations: 3,
+      maxRetries: 2,
+      observation: "B",
+      imageTokenBudget: 0,
+    }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(SessionError);
+    const { record, message } = err as SessionError;
+    expect(message).toMatch(/529/);
+    expect(record.status).toBe("error");
+    expect(record.usage.painter.inputTokens).toBeGreaterThan(0);
   });
 });

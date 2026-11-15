@@ -24,7 +24,7 @@ export type Case =
       maxRetries?: number;
       imageTokenBudget?: number;
       expect: {
-        status?: "done" | "max_iterations" | "invalid_output";
+        status?: "done" | "max_iterations" | "invalid_output" | "refused" | "error";
         iterations?: number;
         maxRetries?: number;
         minFinalScore?: number;

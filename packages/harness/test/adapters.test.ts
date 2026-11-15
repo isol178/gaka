@@ -190,6 +190,17 @@ describe("OpenAICompatibleAdapter (HTTP, servers without an SDK)", () => {
     });
     expect(res.stopReason).toBe("max_tokens");
   });
+
+  it("refuses to fall back to api.openai.com when baseUrl is missing", async () => {
+    const { baseUrl: _omit, ...noBase } = profile("local-ollama");
+    expect(() => parseProfile(noBase)).toThrow(/invalid capability profile/);
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    await expect(
+      new OpenAICompatibleAdapter(noBase, {}).complete({ system: "", prompt: "" }),
+    ).rejects.toThrow(/needs baseUrl/);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
 });
 
 const geminiResponse = (finish: string, extra: Record<string, unknown> = {}) => ({

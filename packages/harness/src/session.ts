@@ -35,7 +35,7 @@ export interface SessionConfig {
   outDir?: string;
 }
 
-export type SessionStatus = "done" | "max_iterations" | "invalid_output";
+export type SessionStatus = "done" | "max_iterations" | "invalid_output" | "refused" | "error";
 
 export interface IterationRecord {
   index: number;
@@ -62,6 +62,21 @@ export interface SessionRecord {
 
 type Parsed<T> = { ok: true; value: T } | { ok: false; errors: string[] };
 
+/**
+ * Thrown when a session aborts on an unexpected error (network, provider, observer). Carries the
+ * partial record so callers can still account for the spend and inspect finished iterations.
+ */
+export class SessionError extends Error {
+  constructor(
+    message: string,
+    readonly record: SessionRecord,
+    options?: { cause?: unknown },
+  ) {
+    super(message, options);
+    this.name = "SessionError";
+  }
+}
+
 /** Calls a model, re-asking with the validation errors until the reply parses or retries run out. */
 async function callWithRetry<T>(
   model: ModelAdapter,
@@ -69,14 +84,13 @@ async function callWithRetry<T>(
   parse: (text: string) => Parsed<T>,
   maxRetries: number,
   onUsage: (u: Usage) => void,
-): Promise<{ value?: T; attempts: number; rejected: string[][] }> {
+): Promise<{ value?: T; refused?: true; attempts: number; rejected: string[][] }> {
   const rejected: string[][] = [];
   let prompt = req.prompt;
   for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
     const res = await model.complete({ ...req, prompt });
     onUsage(res.usage);
-    if (res.stopReason === "refusal")
-      throw new Error(`model '${model.profile.id}' refused the request`);
+    if (res.stopReason === "refusal") return { refused: true, attempts: attempt, rejected };
     const parsed: Parsed<T> =
       res.stopReason === "max_tokens"
         ? {
@@ -145,90 +159,104 @@ export async function runSession(cfg: SessionConfig): Promise<SessionRecord> {
   let previousPng: Buffer | undefined;
   let lastCritique: Critique | undefined;
 
-  for (let i = 1; i <= cfg.maxIterations; i++) {
-    const painterReq: ModelRequest = {
-      system: PAINTER_SYSTEM,
-      prompt:
-        painting === undefined || lastCritique === undefined
-          ? painterFirstPrompt(cfg.brief, cfg.canvas)
-          : painterRevisePrompt(cfg.brief, painting, lastCritique.fixes),
-    };
-    const painted = await callWithRetry(
-      cfg.painter,
-      painterReq,
-      painting === undefined ? parseFullPainting(cfg.canvas) : parseLayerReplacement(painting),
-      cfg.maxRetries,
-      (u) => {
-        record.usage.painter = addUsage(record.usage.painter, u);
-      },
-    );
-    if (painted.value === undefined) {
-      record.status = "invalid_output";
-      break;
-    }
-    painting = painted.value;
+  let failure: unknown;
+  try {
+    for (let i = 1; i <= cfg.maxIterations; i++) {
+      const painterReq: ModelRequest = {
+        system: PAINTER_SYSTEM,
+        prompt:
+          painting === undefined || lastCritique === undefined
+            ? painterFirstPrompt(cfg.brief, cfg.canvas)
+            : painterRevisePrompt(cfg.brief, painting, lastCritique.fixes),
+      };
+      const painted = await callWithRetry(
+        cfg.painter,
+        painterReq,
+        painting === undefined ? parseFullPainting(cfg.canvas) : parseLayerReplacement(painting),
+        cfg.maxRetries,
+        (u) => {
+          record.usage.painter = addUsage(record.usage.painter, u);
+        },
+      );
+      if (painted.refused) {
+        record.status = "refused";
+        break;
+      }
+      if (painted.value === undefined) {
+        record.status = "invalid_output";
+        break;
+      }
+      painting = painted.value;
 
-    const rendered = renderPainting(painting);
-    const obs = observe({
-      png: rendered.png,
-      previousPng,
-      focus: lastCritique?.focus,
-      condition: record.observation,
-      criticProfile: cfg.critic.profile,
-      imageTokenBudget: cfg.imageTokenBudget,
-    });
+      const rendered = renderPainting(painting);
+      const obs = observe({
+        png: rendered.png,
+        previousPng,
+        focus: lastCritique?.focus,
+        condition: record.observation,
+        criticProfile: cfg.critic.profile,
+        imageTokenBudget: cfg.imageTokenBudget,
+      });
 
-    const criticReq: ModelRequest = {
-      system: CRITIC_SYSTEM,
-      prompt: criticPrompt({
-        brief: cfg.brief,
+      const criticReq: ModelRequest = {
+        system: CRITIC_SYSTEM,
+        prompt: criticPrompt({
+          brief: cfg.brief,
+          painting,
+          metrics: obs.metrics,
+          imageLabels: obs.images.map((im) => im.label),
+          iteration: i,
+          maxIterations: cfg.maxIterations,
+        }),
+        images: obs.images,
+      };
+      const critiqued = await callWithRetry(
+        cfg.critic,
+        criticReq,
+        parseCritiqueResult,
+        cfg.maxRetries,
+        (u) => {
+          record.usage.critic = addUsage(record.usage.critic, u);
+        },
+      );
+      if (critiqued.refused) {
+        record.status = "refused";
+        break;
+      }
+      if (critiqued.value === undefined) {
+        record.status = "invalid_output";
+        break;
+      }
+
+      const iteration: IterationRecord = {
+        index: i,
         painting,
+        painterAttempts: painted.attempts,
+        criticAttempts: critiqued.attempts,
+        rejected: [...painted.rejected, ...critiqued.rejected],
+        pixelHash: rendered.pixelHash,
         metrics: obs.metrics,
-        imageLabels: obs.images.map((im) => im.label),
-        iteration: i,
-        maxIterations: cfg.maxIterations,
-      }),
-      images: obs.images,
-    };
-    const critiqued = await callWithRetry(
-      cfg.critic,
-      criticReq,
-      parseCritiqueResult,
-      cfg.maxRetries,
-      (u) => {
-        record.usage.critic = addUsage(record.usage.critic, u);
-      },
-    );
-    if (critiqued.value === undefined) {
-      record.status = "invalid_output";
-      break;
-    }
+        imagesShown: obs.images.map((im) => im.label),
+        imagesDropped: obs.dropped,
+        critique: critiqued.value,
+      };
+      record.iterations.push(iteration);
+      if (cfg.outDir) {
+        const stem = join(cfg.outDir, `iter-${String(i).padStart(2, "0")}`);
+        writeFileSync(`${stem}.png`, rendered.png);
+        writeFileSync(`${stem}.json`, `${JSON.stringify(iteration, null, 2)}\n`);
+      }
 
-    const iteration: IterationRecord = {
-      index: i,
-      painting,
-      painterAttempts: painted.attempts,
-      criticAttempts: critiqued.attempts,
-      rejected: [...painted.rejected, ...critiqued.rejected],
-      pixelHash: rendered.pixelHash,
-      metrics: obs.metrics,
-      imagesShown: obs.images.map((im) => im.label),
-      imagesDropped: obs.dropped,
-      critique: critiqued.value,
-    };
-    record.iterations.push(iteration);
-    if (cfg.outDir) {
-      const stem = join(cfg.outDir, `iter-${String(i).padStart(2, "0")}`);
-      writeFileSync(`${stem}.png`, rendered.png);
-      writeFileSync(`${stem}.json`, `${JSON.stringify(iteration, null, 2)}\n`);
+      previousPng = rendered.png;
+      lastCritique = critiqued.value;
+      if (lastCritique.done) {
+        record.status = "done";
+        break;
+      }
     }
-
-    previousPng = rendered.png;
-    lastCritique = critiqued.value;
-    if (lastCritique.done) {
-      record.status = "done";
-      break;
-    }
+  } catch (err) {
+    failure = err;
+    record.status = "error";
   }
 
   if (painting !== undefined) record.finalPainting = painting;
@@ -236,5 +264,9 @@ export async function runSession(cfg: SessionConfig): Promise<SessionRecord> {
   if (last) record.finalScore = last.critique.score;
   if (cfg.outDir)
     writeFileSync(join(cfg.outDir, "session.json"), `${JSON.stringify(record, null, 2)}\n`);
+  if (failure !== undefined) {
+    const msg = failure instanceof Error ? failure.message : String(failure);
+    throw new SessionError(msg, record, { cause: failure });
+  }
   return record;
 }

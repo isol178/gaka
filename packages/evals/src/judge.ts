@@ -20,6 +20,17 @@ export interface JudgeScore {
   score: number;
 }
 
+/** The judge replied but without a usable score; `usage` is what that reply cost. */
+export class JudgeError extends Error {
+  constructor(
+    message: string,
+    readonly usage: Usage,
+  ) {
+    super(message);
+    this.name = "JudgeError";
+  }
+}
+
 export async function judge(
   model: ModelAdapter,
   brief: string,
@@ -42,6 +53,6 @@ export async function judge(
     }
   }
   if (typeof parsed.score !== "number")
-    throw new Error(`judge returned no score: ${res.text.slice(0, 200)}`);
+    throw new JudgeError(`judge returned no score: ${res.text.slice(0, 200)}`, res.usage);
   return { score: parsed as JudgeScore, usage: res.usage };
 }

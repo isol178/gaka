@@ -25,8 +25,9 @@ def thumbnail(img: Image.Image, max_side: int = 256) -> Image.Image:
 
 
 def crop(img: Image.Image, box: RatioBox) -> Image.Image:
-    left = round(box.x * img.width)
-    top = round(box.y * img.height)
+    """Crop to `box`, clamped to the image. Always at least 1x1, even for x=1 or y=1."""
+    left = min(img.width - 1, max(0, round(box.x * img.width)))
+    top = min(img.height - 1, max(0, round(box.y * img.height)))
     right = min(img.width, left + max(1, round(box.w * img.width)))
     bottom = min(img.height, top + max(1, round(box.h * img.height)))
     return img.crop((left, top, right, bottom))

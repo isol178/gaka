@@ -54,43 +54,42 @@ export interface ObserveInput {
   imageTokenBudget: number;
 }
 
+interface ObserverResult {
+  metrics: Record<string, unknown>;
+  thumbnail?: string;
+  focus?: string;
+  changed_region?: Box | null;
+  changed?: string;
+}
+
 export function observe(input: ObserveInput): Observation {
   const dir = mkdtempSync(join(tmpdir(), "gaka-observe-"));
   try {
     const cur = join(dir, "current.png");
     writeFileSync(cur, input.png);
-    const metrics = observerCli(["metrics", cur]) as Record<string, unknown>;
+    const args = ["observe", cur, join(dir, "views")];
+    const c = input.condition;
+    if (c === "B" || c === "C") args.push("--thumbnail", "--max-side", "256");
+    if (c === "C" && input.focus) {
+      const { x, y, w, h } = input.focus;
+      args.push("--focus", ...[x, y, w, h].map(String));
+    }
+    if (c === "C" && input.previousPng) {
+      const prev = join(dir, "previous.png");
+      writeFileSync(prev, input.previousPng);
+      args.push("--previous", prev);
+    }
+    // One process per observation: uv and the numpy/Pillow import dominate each spawn's cost.
+    const r = observerCli(args) as ObserverResult;
+    const metrics = r.metrics;
+    if (r.changed_region !== undefined) metrics.changed_region = r.changed_region;
 
     // Candidate images in priority order; the budget decides how many are actually shown.
     const candidates: ImageInput[] = [];
-    const cropTo = (label: string, box: Box) => {
-      const out = join(dir, `${label.replace(/\W/g, "_")}.png`);
-      observerCli([
-        "crop",
-        cur,
-        out,
-        ...Object.entries(box).flatMap(([k, v]) => [`--${k}`, String(v)]),
-      ]);
-      candidates.push({ label, png: readFileSync(out) });
-    };
-
-    if (input.condition === "A") {
-      candidates.push({ label: "full", png: input.png });
-    } else if (input.condition === "B" || input.condition === "C") {
-      const thumb = join(dir, "thumb.png");
-      observerCli(["thumbnail", cur, thumb, "--max-side", "256"]);
-      candidates.push({ label: "thumbnail", png: readFileSync(thumb) });
-    }
-    if (input.condition === "C") {
-      if (input.focus) cropTo("focus", input.focus);
-      if (input.previousPng) {
-        const prev = join(dir, "previous.png");
-        writeFileSync(prev, input.previousPng);
-        const diff = observerCli(["diff", prev, cur]) as { changed: boolean; box: Box | null };
-        metrics.changed_region = diff.box;
-        if (diff.box) cropTo("changed", diff.box);
-      }
-    }
+    if (c === "A") candidates.push({ label: "full", png: input.png });
+    if (r.thumbnail) candidates.push({ label: "thumbnail", png: readFileSync(r.thumbnail) });
+    if (r.focus) candidates.push({ label: "focus", png: readFileSync(r.focus) });
+    if (r.changed) candidates.push({ label: "changed", png: readFileSync(r.changed) });
 
     const images: ImageInput[] = [];
     const dropped: string[] = [];

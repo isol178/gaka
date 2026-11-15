@@ -91,7 +91,7 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "status": { "enum": ["done", "max_iterations", "invalid_output"] },
+            "status": { "enum": ["done", "max_iterations", "invalid_output", "refused", "error"] },
             "iterations": { "type": "integer" },
             "maxRetries": { "type": "integer" },
             "minFinalScore": { "type": "number" },

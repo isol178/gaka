@@ -5,7 +5,7 @@ import { createAdapter, loadProfiles } from "./model/profiles.ts";
 import { costUsd } from "./model/types.ts";
 import type { ObservationCondition } from "./observe.ts";
 import { MODEL_PROFILES_DIR, REPO_ROOT } from "./paths.ts";
-import { runSession } from "./session.ts";
+import { runSession, SessionError, type SessionRecord } from "./session.ts";
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,
@@ -44,17 +44,30 @@ const criticProfile = get(values.critic);
 const outDir =
   values.out ?? join(REPO_ROOT, "runs", new Date().toISOString().replace(/[:.]/g, "-"));
 
-const record = await runSession({
-  brief: values.brief,
-  canvas: { width: Number(values.width), height: Number(values.height), seed: Number(values.seed) },
-  painter: createAdapter(painterProfile),
-  critic: createAdapter(criticProfile),
-  maxIterations: Number(values.iterations),
-  maxRetries: Number(values.retries),
-  observation: values.condition as ObservationCondition,
-  imageTokenBudget: Number(values["image-budget"]),
-  outDir,
-});
+let record: SessionRecord;
+let error: string | undefined;
+try {
+  record = await runSession({
+    brief: values.brief,
+    canvas: {
+      width: Number(values.width),
+      height: Number(values.height),
+      seed: Number(values.seed),
+    },
+    painter: createAdapter(painterProfile),
+    critic: createAdapter(criticProfile),
+    maxIterations: Number(values.iterations),
+    maxRetries: Number(values.retries),
+    observation: values.condition as ObservationCondition,
+    imageTokenBudget: Number(values["image-budget"]),
+    outDir,
+  });
+} catch (err) {
+  // runSession has already written session.json; still report what was spent before failing.
+  if (!(err instanceof SessionError)) throw err;
+  record = err.record;
+  error = err.message;
+}
 
 const cost =
   costUsd(painterProfile, record.usage.painter) + costUsd(criticProfile, record.usage.critic);
@@ -62,6 +75,7 @@ console.log(
   JSON.stringify(
     {
       status: record.status,
+      ...(error ? { error } : {}),
       iterations: record.iterations.length,
       finalScore: record.finalScore,
       usage: record.usage,
@@ -72,3 +86,4 @@ console.log(
     2,
   ),
 );
+if (error) process.exitCode = 1;

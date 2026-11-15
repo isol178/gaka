@@ -1,9 +1,9 @@
 import {
   type CapabilityProfile,
-  estimateImageTokens,
   type ModelAdapter,
   type ModelRequest,
   type ModelResponse,
+  requestImageTokens,
 } from "./types.ts";
 
 function apiKey(profile: CapabilityProfile, env: NodeJS.ProcessEnv): string | undefined {
@@ -26,10 +26,6 @@ async function postJson(
   });
   if (!res.ok) throw new Error(`${url} -> HTTP ${res.status}: ${(await res.text()).slice(0, 500)}`);
   return res.json();
-}
-
-function imageTokens(profile: CapabilityProfile, req: ModelRequest): number {
-  return (req.images ?? []).reduce((n, im) => n + estimateImageTokens(profile, im.png), 0);
 }
 
 /**
@@ -59,7 +55,9 @@ export class OpenAICompatibleAdapter implements ModelAdapter {
       ],
       ...(req.maxOutputTokens ? { max_tokens: req.maxOutputTokens } : {}),
     };
-    const base = this.profile.baseUrl ?? "https://api.openai.com/v1";
+    const base = this.profile.baseUrl;
+    // OpenAI itself goes through OpenAIAdapter (sdk.ts); plain HTTP is only for servers without an SDK.
+    if (!base) throw new Error(`profile '${this.profile.id}' (openai-compatible) needs baseUrl`);
     const json = (await postJson(
       `${base.replace(/\/$/, "")}/chat/completions`,
       key ? { authorization: `Bearer ${key}` } : {},
@@ -76,7 +74,7 @@ export class OpenAICompatibleAdapter implements ModelAdapter {
       usage: {
         inputTokens: json.usage?.prompt_tokens ?? 0,
         outputTokens: json.usage?.completion_tokens ?? 0,
-        imageTokens: imageTokens(this.profile, req),
+        imageTokens: requestImageTokens(this.profile, req),
       },
     };
   }

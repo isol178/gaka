@@ -64,6 +64,23 @@ describe("runCase", () => {
     expect(rs.every((r) => r.skipped?.includes("ANTHROPIC_API_KEY"))).toBe(true);
   });
 
+  it("a missing judge key never turns into a case-level (gating) failure", async () => {
+    const rs = await runCase(
+      {
+        id: "live",
+        kind: "live-session",
+        brief: "b",
+        pairs: [{ painter: "gemini-4-carbon", critic: "gemini-4-carbon" }],
+        conditions: ["A"],
+        judge: "claude-opus-5-5",
+      },
+      ctx({}),
+    );
+    expect(rs).toHaveLength(1);
+    expect(rs[0]?.variant).toBeDefined();
+    expect(rs[0]?.skipped).toMatch(/GEMINI_API_KEY/);
+  });
+
   it("stops launching live runs once the cost guard is hit", async () => {
     const c = { ...ctx({ ANTHROPIC_API_KEY: "x" }), spentUsd: 2 };
     const rs = await runCase(
