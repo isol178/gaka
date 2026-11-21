@@ -35,17 +35,17 @@
     "lint:shell": "uv tool run --quiet --from shellcheck-py==0.11.0.1 shellcheck -x -P SCRIPTDIR .claude/hooks/*.sh .claude/hooks/test/*.sh"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.6.7",
+    "@biomejs/biome": "^2.6.8",
     "@commitlint/cli": "^21.2.4",
     "@commitlint/config-conventional": "^21.2.4",
     "@gaka/dsl": "workspace:*",
     "@gaka/renderer": "workspace:*",
     "@types/node": "^26.6.6",
-    "@vitest/coverage-v8": "^5.1.0",
+    "@vitest/coverage-v8": "^5.1.1",
     "esbuild": "^0.28.2",
     "lefthook": "^2.2.2",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.1"
   }
 }
